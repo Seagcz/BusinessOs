@@ -201,7 +201,7 @@ export const AdminStaffSection: React.FC<AdminStaffSectionProps> = ({
 
   const handleCopyPinSlip = () => {
     if (!pinTargetStaff) return;
-    const slip = `🔐 NaijaBiz POS — Employee Credentials Slip\n👤 Staff: ${pinTargetStaff.name} (${pinTargetStaff.role.toUpperCase()})\n🔢 4-Digit Login PIN: ${provisionPin}\n${provisionPassword ? `🔑 Master Password: ${provisionPassword}\n` : ''}${provisionMustChange ? '⚠️ Notice: You will be asked to choose your own private 4-digit PIN on your first login.\n' : ''}🛡️ Provisioned by Admin: ${currentStaff.name}`;
+    const slip = `🔐 Business OS — Employee Credentials Slip\n👤 Staff: ${pinTargetStaff.name} (${pinTargetStaff.role.toUpperCase()})\n🔢 4-Digit Login PIN: ${provisionPin}\n${provisionPassword ? `🔑 Master Password: ${provisionPassword}\n` : ''}${provisionMustChange ? '⚠️ Notice: You will be asked to choose your own private 4-digit PIN on your first login.\n' : ''}🛡️ Provisioned by Admin: ${currentStaff.name}`;
     navigator.clipboard.writeText(slip);
     setPinCopied(true);
     setTimeout(() => setPinCopied(false), 2500);

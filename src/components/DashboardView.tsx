@@ -329,6 +329,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-cyan-500/30 text-xs font-bold text-white shadow-xs">
+            <img
+              src="/logo.jpg"
+              alt="Business OS"
+              referrerPolicy="no-referrer"
+              className="w-4 h-4 rounded-md object-cover"
+            />
+            <span className="bg-gradient-to-r from-cyan-400 to-fuchsia-400 bg-clip-text text-transparent">
+              Business OS
+            </span>
+            <span className="text-[10px] text-cyan-300 font-semibold">• Solana</span>
+          </div>
+
           <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Offline Ready</span>

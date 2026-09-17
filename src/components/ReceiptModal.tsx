@@ -181,7 +181,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
     <div class="footer">
       <p style="font-style: italic;">${business.receiptFooterMessage || 'Thank you for your patronage!'}</p>
-      <p style="font-size: 8px; margin-top: 4px; text-transform: uppercase;">Small Business OS • Verified Receipt</p>
+      <p style="font-size: 8px; margin-top: 4px; text-transform: uppercase;">Business OS • Simpler Business Onchain (Powered by Solana)</p>
     </div>
   </div>
 </body>
@@ -324,7 +324,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               )}
               <p className="italic font-sans text-slate-600">{business.receiptFooterMessage}</p>
               <p className="font-bold text-[9px] text-slate-400 mt-1 uppercase tracking-widest">
-                *** SMALL BUSINESS OS NIGERIA ***
+                *** BUSINESS OS • ONCHAIN SOLANA ***
               </p>
             </div>
           </div>

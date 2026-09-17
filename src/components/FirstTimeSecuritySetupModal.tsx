@@ -35,8 +35,8 @@ export const FirstTimeSecuritySetupModal: React.FC<FirstTimeSecuritySetupModalPr
   const [step, setStep] = useState<'credentials' | 'pin' | 'complete'>('credentials');
   
   // Step 1: Profile & Master Password
-  const [name, setName] = useState(ownerStaff.name.replace(/\s*\(Owner\)/i, ''));
-  const [email, setEmail] = useState(ownerStaff.email || business.email || '');
+  const [name, setName] = useState(ownerStaff?.name ? ownerStaff.name.replace(/\s*\(Owner\)/i, '') : '');
+  const [email, setEmail] = useState(ownerStaff?.email || business?.email || '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -493,7 +493,7 @@ export const FirstTimeSecuritySetupModal: React.FC<FirstTimeSecuritySetupModalPr
                 className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-lg shadow-emerald-950"
               >
                 <Check className="w-4 h-4" />
-                <span>Open NaijaBiz POS</span>
+                <span>Open Business OS</span>
               </button>
             </div>
           </div>

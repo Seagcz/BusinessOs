@@ -1,6 +1,6 @@
 {
   "name": "Small Business OS",
-  "description": "Modern mobile-first offline-ready PWA for Nigerian small businesses with POS, inventory, expenses, debt tracking, invoices, reports, and admin management.",
+  "description": "Simpler Business • Onchain — Powered by Solana: Modern offline-ready POS, inventory, expenses, debt tracking, invoices, reports, and admin management.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

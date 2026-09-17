@@ -255,7 +255,20 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-cyan-500/30 text-xs shadow-inner">
+            <img
+              src="/logo.jpg"
+              alt="Business OS"
+              referrerPolicy="no-referrer"
+              className="w-5 h-5 rounded-md object-cover"
+            />
+            <div className="text-left leading-none">
+              <span className="text-[11px] font-bold text-white">Business OS</span>
+              <p className="text-[9px] text-cyan-400 font-semibold">Solana Onchain</p>
+            </div>
+          </div>
+
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab('pos')}

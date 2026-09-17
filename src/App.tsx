@@ -446,7 +446,7 @@ export const App: React.FC = () => {
             <div className="flex items-center gap-2">
               <Smartphone className="w-4 h-4 text-emerald-400 flex-shrink-0" />
               <span>
-                <strong className="font-bold">Install NaijaBiz POS:</strong> Run offline fast on your Android phone!
+                <strong className="font-bold">Install Business OS:</strong> Simpler business onchain, offline-ready!
               </span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -645,72 +645,82 @@ export const App: React.FC = () => {
 
       {/* MODALS */}
       {/* 1. Receipt Modal */}
-      <ReceiptModal
-        isOpen={isReceiptModalOpen}
-        onClose={() => setIsReceiptModalOpen(false)}
-        sale={activeReceiptSale}
-        business={business}
-        onNewSale={() => {
-          setIsReceiptModalOpen(false);
-          setActiveTab('pos');
-        }}
-      />
+      {isReceiptModalOpen && (
+        <ReceiptModal
+          isOpen={isReceiptModalOpen}
+          onClose={() => setIsReceiptModalOpen(false)}
+          sale={activeReceiptSale}
+          business={business}
+          onNewSale={() => {
+            setIsReceiptModalOpen(false);
+            setActiveTab('pos');
+          }}
+        />
+      )}
 
       {/* 2. Staff Authentication & Switch Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        staffList={staffList}
-        currentStaff={currentStaff}
-        onLogin={handleStaffLogin}
-        businesses={businessesList}
-        currentBusiness={business}
-        onSwitchBusiness={handleSwitchBusiness}
-        onOpenFirstTimeSetup={() => setIsFirstTimeSetupOpen(true)}
-        onUpdateStaff={(updatedStaff) => {
-          storageService.saveStaffUser(updatedStaff);
-          const fresh = storageService.getStaff(business.id);
-          setStaffList(fresh);
-          if (currentStaff.id === updatedStaff.id) {
-            setCurrentStaff(updatedStaff);
-          }
-        }}
-      />
+      {isAuthModalOpen && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          staffList={staffList}
+          currentStaff={currentStaff}
+          onLogin={handleStaffLogin}
+          businesses={businessesList}
+          currentBusiness={business}
+          onSwitchBusiness={handleSwitchBusiness}
+          onOpenFirstTimeSetup={() => setIsFirstTimeSetupOpen(true)}
+          onUpdateStaff={(updatedStaff) => {
+            storageService.saveStaffUser(updatedStaff);
+            const fresh = storageService.getStaff(business.id);
+            setStaffList(fresh);
+            if (currentStaff.id === updatedStaff.id) {
+              setCurrentStaff(updatedStaff);
+            }
+          }}
+        />
+      )}
 
       {/* 2b. First-Time Security Master PIN & Password Setup Modal */}
-      <FirstTimeSecuritySetupModal
-        isOpen={isFirstTimeSetupOpen}
-        onClose={() => setIsFirstTimeSetupOpen(false)}
-        business={business}
-        ownerStaff={staffList.find((s) => s.role === 'owner') || staffList[0] || currentStaff}
-        onComplete={handleCompleteFirstTimeSetup}
-      />
+      {isFirstTimeSetupOpen && (
+        <FirstTimeSecuritySetupModal
+          isOpen={isFirstTimeSetupOpen}
+          onClose={() => setIsFirstTimeSetupOpen(false)}
+          business={business}
+          ownerStaff={staffList.find((s) => s.role === 'owner') || staffList[0] || currentStaff}
+          onComplete={handleCompleteFirstTimeSetup}
+        />
+      )}
 
       {/* 3. Notifications Drawer Modal */}
-      <NotificationsModal
-        isOpen={isNotificationsOpen}
-        onClose={() => setIsNotificationsOpen(false)}
-        notifications={notifications}
-        onMarkAsRead={handleMarkNotificationRead}
-        onClearAll={handleClearNotifications}
-        onAction={(notif) => {
-          if (notif.type === 'low_stock') setActiveTab('inventory');
-          else if (notif.type === 'debt_overdue') setActiveTab('debts');
-          setIsNotificationsOpen(false);
-        }}
-      />
+      {isNotificationsOpen && (
+        <NotificationsModal
+          isOpen={isNotificationsOpen}
+          onClose={() => setIsNotificationsOpen(false)}
+          notifications={notifications}
+          onMarkAsRead={handleMarkNotificationRead}
+          onClearAll={handleClearNotifications}
+          onAction={(notif) => {
+            if (notif.type === 'low_stock') setActiveTab('inventory');
+            else if (notif.type === 'debt_overdue') setActiveTab('debts');
+            setIsNotificationsOpen(false);
+          }}
+        />
+      )}
 
       {/* 4. Offline Sync & Network Status Dashboard Modal */}
-      <SyncStatusModal
-        isOpen={isSyncModalOpen}
-        onClose={() => setIsSyncModalOpen(false)}
-        business={business}
-        networkStatus={networkStatus}
-        syncSummary={syncSummary}
-        onTriggerSync={async () => {
-          await syncService.syncNow(business.id);
-        }}
-      />
+      {isSyncModalOpen && (
+        <SyncStatusModal
+          isOpen={isSyncModalOpen}
+          onClose={() => setIsSyncModalOpen(false)}
+          business={business}
+          networkStatus={networkStatus}
+          syncSummary={syncSummary}
+          onTriggerSync={async () => {
+            await syncService.syncNow(business.id);
+          }}
+        />
+      )}
       </div>
     </div>
   );

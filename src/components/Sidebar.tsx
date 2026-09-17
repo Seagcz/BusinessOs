@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { BusinessProfile, StaffUser, NavigationTab } from '../types';
+import { BusinessOSLogo } from './BusinessOSLogo';
 
 interface SidebarProps {
   business: BusinessProfile;
@@ -51,14 +52,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside className="hidden lg:flex w-64 bg-[#0F172A] text-white flex-col flex-shrink-0 min-h-screen sticky top-0 border-r border-slate-800 z-20">
       {/* Brand Header */}
       <div className="p-6 pb-4">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-white text-lg shadow-md shadow-emerald-500/20">
-            N
-          </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-white leading-tight">NaijaBiz OS</h1>
-            <p className="text-[10px] text-slate-400 font-medium">Bento Business Edition</p>
-          </div>
+        <div className="mb-6">
+          <BusinessOSLogo variant="header" size="md" showSubtitle={true} />
         </div>
 
         {/* Navigation Items */}

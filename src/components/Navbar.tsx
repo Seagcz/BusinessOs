@@ -1,6 +1,7 @@
 import React from 'react';
 import { Wifi, WifiOff, Bell, UserCheck, RefreshCw, Store, Plus, Sparkles, Layers } from 'lucide-react';
 import { BusinessProfile, StaffUser, AppNotification, NavigationTab } from '../types';
+import { BusinessOSLogo } from './BusinessOSLogo';
 
 interface NavbarProps {
   business: BusinessProfile;
@@ -37,23 +38,18 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Left Side: Mobile Logo & Title / Desktop Breadcrumb */}
         <div className="flex items-center gap-3">
           <div className="lg:hidden flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-slate-950 shadow-md">
-              ₦
-            </div>
-            <div>
-              <h1 className="text-sm font-black tracking-tight text-slate-100 leading-none">NaijaBiz OS</h1>
-              <p className="text-[10px] text-slate-400 truncate max-w-[120px]">{business.name}</p>
-            </div>
+            <BusinessOSLogo variant="header" size="sm" showSubtitle={false} />
+            <span className="text-slate-700">|</span>
+            <p className="text-[11px] text-slate-400 font-medium truncate max-w-[110px]">{business.name}</p>
           </div>
 
-          <div className="hidden lg:block">
-            <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-              <span className="text-slate-300 font-semibold">{business.name}</span>
-              <span>/</span>
-              <span className="capitalize font-bold text-slate-100 tracking-wide">
-                {activeTab === 'pos' ? 'Sales & POS Register' : activeTab === 'debts' ? 'Customer Debts' : activeTab}
-              </span>
-            </div>
+          <div className="hidden lg:flex items-center gap-2.5 text-xs text-slate-400 font-medium">
+            <BusinessOSLogo variant="icon" size="sm" />
+            <span className="text-slate-300 font-semibold">{business.name}</span>
+            <span>/</span>
+            <span className="capitalize font-bold text-slate-100 tracking-wide">
+              {activeTab === 'pos' ? 'Sales & POS Register' : activeTab === 'debts' ? 'Customer Debts' : activeTab}
+            </span>
           </div>
         </div>
 

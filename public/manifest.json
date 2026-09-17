@@ -1,11 +1,11 @@
 {
-  "name": "Small Business OS",
-  "short_name": "BusinessOS",
-  "description": "Modern Nigerian POS, Inventory, Debts, Expenses & Business OS",
+  "name": "Business OS — Simpler Business Onchain",
+  "short_name": "Business OS",
+  "description": "Simpler Business • Onchain — Powered by Solana: POS, Inventory, Debts, Expenses, Invoices & Offline Operations",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#090d16",
-  "theme_color": "#0f172a",
+  "background_color": "#070c18",
+  "theme_color": "#0c172e",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -13,6 +13,12 @@
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ]
 }
