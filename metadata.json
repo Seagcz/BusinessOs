@@ -1,0 +1,6 @@
+{
+  "name": "Small Business OS",
+  "description": "Modern mobile-first offline-ready PWA for Nigerian small businesses with POS, inventory, expenses, debt tracking, invoices, reports, and admin management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
