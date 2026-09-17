@@ -45,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'debts', label: 'Customers & Debts', icon: BookOpen, badge: overdueDebtCount > 0 ? `${overdueDebtCount} Due` : null, badgeColor: 'bg-rose-500 text-white' },
     { id: 'expenses', label: 'Operating Expenses', icon: Receipt },
     { id: 'invoices', label: 'Invoices & Quotes', icon: FileText },
+    { id: 'blockchain', label: 'Solana & USDC', icon: ShieldCheck, badge: 'Mainnet', badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold' },
     { id: 'reports', label: 'Reports & P&L', icon: BarChart3 },
   ];
 

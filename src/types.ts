@@ -63,6 +63,7 @@ export type NavigationTab =
   | 'expenses'
   | 'invoices'
   | 'reports'
+  | 'blockchain'
   | 'admin';
 
 export interface BankAccount {
@@ -101,6 +102,11 @@ export interface BusinessProfile {
   enableDailyClosingAlert?: boolean;
   enableWhatsAppReceipt?: boolean;
   receiptFooterMessage?: string;
+  // Optional Solana Blockchain Settlement
+  solanaWalletAddress?: string; // Solana mainnet public key (Base58)
+  solanaUsdcEnabled?: boolean; // Accept USDC on Solana
+  solanaUsdcNgnRate?: number; // Custom or cached exchange rate (e.g., 1550 NGN = 1 USDC)
+  solanaCluster?: 'mainnet-beta' | 'devnet'; // Defaults to mainnet-beta
   createdAt: string;
 }
 
@@ -174,7 +180,7 @@ export interface SaleItem {
   unit?: string;
 }
 
-export type PaymentMethod = 'cash' | 'transfer' | 'pos' | 'credit' | 'split';
+export type PaymentMethod = 'cash' | 'transfer' | 'pos' | 'credit' | 'split' | 'solana';
 
 export interface SplitPaymentDetail {
   cash?: number;
@@ -339,7 +345,41 @@ export interface Invoice {
   };
   notes?: string;
   terms?: string;
+  // Optional Solana Settlement Details
+  solanaPaymentEnabled?: boolean;
+  solanaUsdcAmount?: number;
+  solanaRecipientAddress?: string;
+  solanaSignature?: string;
+  solanaPayerWallet?: string;
+  solanaConfirmedAt?: string;
+  solanaExplorerUrl?: string;
   createdAt: string;
+}
+
+export interface SolanaTransaction {
+  id: string;
+  businessId: string;
+  signature: string;
+  type: 'invoice' | 'pos_sale' | 'payment_link' | 'transfer';
+  status: 'pending' | 'confirmed' | 'failed';
+  amountUsdc: number;
+  amountNgn: number;
+  exchangeRate: number; // NGN per USDC
+  recipientAddress: string;
+  payerAddress?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  saleId?: string;
+  receiptNumber?: string;
+  customerName?: string;
+  timestamp: string;
+  slot?: number;
+  blockTime?: number;
+  confirmationStatus?: 'processed' | 'confirmed' | 'finalized';
+  explorerUrl: string;
+  notes?: string;
+  errorMessage?: string;
+  verifiedAt?: string;
 }
 
 export interface AuditLog {
@@ -387,6 +427,7 @@ export interface AppDataBackup {
   debts: DebtRecord[];
   expenses: Expense[];
   invoices: Invoice[];
+  solanaTransactions?: SolanaTransaction[];
   auditLogs: AuditLog[];
 }
 

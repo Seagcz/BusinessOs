@@ -27,6 +27,8 @@ import {
   Layers,
   ChevronDown,
   Sparkles,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   Invoice,
@@ -48,6 +50,9 @@ import {
   generateInvoiceHtmlDocument,
   downloadHtmlFile,
 } from '../utils/formatters';
+import { SolanaPaymentModal } from './SolanaPaymentModal';
+import { solanaService } from '../services/solanaService';
+import { storageService } from '../services/storage';
 
 interface InvoicesViewProps {
   business: BusinessProfile;
@@ -112,6 +117,11 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
   const [paymentMethodInput, setPaymentMethodInput] = useState<PaymentMethod>('transfer');
   const [paymentRefInput, setPaymentRefInput] = useState<string>('');
   const [paymentNotesInput, setPaymentNotesInput] = useState<string>('');
+
+  // Solana Settlement Modal
+  const [isSolanaModalOpen, setIsSolanaModalOpen] = useState(false);
+  const [solanaTargetInvoice, setSolanaTargetInvoice] = useState<Invoice | null>(null);
+  const [solanaPaymentEnabled, setSolanaPaymentEnabled] = useState(true);
 
   // Toast indicator
   const [copiedToast, setCopiedToast] = useState<string | null>(null);
@@ -330,6 +340,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
         : 'Kindly transfer to our official bank account with invoice number as reference.'
     );
     setTerms(business.receiptFooterMessage || 'Goods received in good condition.');
+    setSolanaPaymentEnabled(business.solanaUsdcEnabled ?? true);
     setIsEditorOpen(true);
   };
 
@@ -360,6 +371,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
     setStatus(inv.status);
     setNotes(inv.notes || '');
     setTerms(inv.terms || '');
+    setSolanaPaymentEnabled(inv.solanaPaymentEnabled ?? (business.solanaUsdcEnabled ?? true));
     setIsEditorOpen(true);
   };
 
@@ -383,6 +395,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
     setStatus('sent');
     setNotes(inv.notes || '');
     setTerms(inv.terms || '');
+    setSolanaPaymentEnabled(inv.solanaPaymentEnabled ?? (business.solanaUsdcEnabled ?? true));
     setIsEditorOpen(true);
   };
 
@@ -460,6 +473,14 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
       balanceDue: formBalanceDue,
       status: effectiveStatus,
       paymentMethod,
+      solanaPaymentEnabled,
+      solanaUsdcAmount: solanaPaymentEnabled
+        ? Number((formTotalAmount / (business.solanaUsdcNgnRate || 1550)).toFixed(2))
+        : undefined,
+      solanaUsdcRate: business.solanaUsdcNgnRate || 1550,
+      solanaSignature: editingInvoice?.solanaSignature,
+      solanaStatus: editingInvoice?.solanaStatus,
+      solanaExplorerUrl: editingInvoice?.solanaExplorerUrl,
       bankDetails: selectedBank
         ? {
             bankName: selectedBank.bankName,
@@ -487,6 +508,88 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
     setPaymentRefInput('');
     setPaymentNotesInput('Settlement of outstanding invoice balance');
     setIsRecordPaymentOpen(true);
+  };
+
+  // Handle Confirmed Solana USDC Payment for Invoice
+  const handleSolanaPaymentConfirmed = (details: {
+    signature: string;
+    amountUsdc: number;
+    amountNgn: number;
+    exchangeRate: number;
+    payerAddress?: string;
+    recipientAddress: string;
+    slot?: number;
+    blockTime?: number;
+    explorerUrl: string;
+  }) => {
+    if (!solanaTargetInvoice) return;
+    const target = solanaTargetInvoice;
+    const updatedPaid = (target.amountPaid || 0) + details.amountNgn;
+    const updatedBal = Math.max(0, target.totalAmount - updatedPaid);
+
+    const updatedInv: Invoice = {
+      ...target,
+      amountPaid: updatedPaid,
+      balanceDue: updatedBal,
+      status: updatedBal === 0 ? 'paid' : 'partial',
+      solanaSignature: details.signature,
+      solanaStatus: 'confirmed',
+      solanaUsdcAmount: details.amountUsdc,
+      solanaPayerAddress: details.payerAddress,
+      solanaRecipientAddress: details.recipientAddress,
+      solanaSlot: details.slot,
+      solanaBlockTime: details.blockTime,
+      solanaExplorerUrl: details.explorerUrl,
+      paymentMethod: 'solana',
+    };
+
+    onSaveInvoice(updatedInv);
+
+    // Call onRecordPayment if provided
+    if (onRecordPayment) {
+      onRecordPayment(
+        target.id,
+        details.amountNgn,
+        'solana',
+        details.signature,
+        `Settled via Solana USDC on Mainnet (${details.amountUsdc} USDC)`
+      );
+    }
+
+    // Record on-chain transaction in persistent storage
+    storageService.saveSolanaTransaction(
+      {
+        id: 'sol_inv_' + Date.now(),
+        businessId: business.id,
+        signature: details.signature,
+        type: 'invoice',
+        status: 'confirmed',
+        amountUsdc: details.amountUsdc,
+        amountNgn: details.amountNgn,
+        exchangeRate: details.exchangeRate,
+        recipientAddress: details.recipientAddress,
+        payerAddress: details.payerAddress,
+        invoiceId: target.id,
+        invoiceNumber: target.invoiceNumber,
+        customerName: target.customerName,
+        timestamp: new Date().toISOString(),
+        slot: details.slot,
+        blockTime: details.blockTime,
+        confirmationStatus: 'finalized',
+        explorerUrl: details.explorerUrl,
+        notes: `Invoice #${target.invoiceNumber} settled in USDC on Solana Mainnet`,
+        verifiedAt: new Date().toISOString(),
+      },
+      currentStaff.name
+    );
+
+    if (previewInvoice && previewInvoice.id === target.id) {
+      setPreviewInvoice(updatedInv);
+    }
+
+    setIsSolanaModalOpen(false);
+    setSolanaTargetInvoice(null);
+    showToast(`Invoice #${target.invoiceNumber} settled on Solana Mainnet (${details.amountUsdc} USDC)!`);
   };
 
   // Submit Payment Record
@@ -823,18 +926,48 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
                           </span>
                         )}
                       </div>
+                      {inv.solanaSignature ? (
+                        <a
+                          href={inv.solanaExplorerUrl || `https://explorer.solana.com/tx/${inv.solanaSignature}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-emerald-400 hover:text-emerald-300 font-mono font-bold flex items-center sm:justify-end gap-1 mt-0.5"
+                          title="View settled transaction on Solana Explorer"
+                        >
+                          <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                          <span>USDC Settled</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      ) : (inv.solanaPaymentEnabled || business.solanaUsdcEnabled) && inv.balanceDue > 0 ? (
+                        <div className="text-[10px] text-slate-400 font-mono flex items-center sm:justify-end gap-1 mt-0.5">
+                          <span>≈ {((inv.balanceDue) / (inv.solanaUsdcRate || business.solanaUsdcNgnRate || 1550)).toFixed(2)} USDC</span>
+                        </div>
+                      ) : null}
                     </div>
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
                       {inv.balanceDue > 0 && (
-                        <button
-                          onClick={() => handleOpenRecordPayment(inv)}
-                          className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-xl transition cursor-pointer"
-                          title="Record customer payment towards this invoice"
-                        >
-                          + Payment
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleOpenRecordPayment(inv)}
+                            className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-xl transition cursor-pointer"
+                            title="Record customer payment towards this invoice"
+                          >
+                            + Payment
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSolanaTargetInvoice(inv);
+                              setIsSolanaModalOpen(true);
+                            }}
+                            className="px-2.5 py-2 bg-gradient-to-r from-purple-950/60 to-emerald-950/60 hover:from-purple-900/60 hover:to-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1"
+                            title="Receive payment in USDC on Solana Mainnet"
+                          >
+                            <span className="text-xs font-black">◎</span>
+                            <span className="hidden sm:inline">USDC</span>
+                          </button>
+                        </>
                       )}
 
                       <button
@@ -1364,6 +1497,44 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-purple-500"
                 />
               </div>
+            </div>
+
+            {/* Optional Solana Blockchain Settlement Toggle */}
+            <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                    ◎
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-200">Optional Solana USDC Settlement</span>
+                    <p className="text-[11px] text-slate-400">Allow customer to optionally pay in USDC on Solana Mainnet</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={solanaPaymentEnabled}
+                    onChange={(e) => setSolanaPaymentEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
+              {solanaPaymentEnabled && (
+                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                  <span>
+                    USDC Equivalent:{' '}
+                    <strong className="text-emerald-400 font-mono">
+                      {(formTotalAmount / (business.solanaUsdcNgnRate || 1550)).toFixed(2)} USDC
+                    </strong>
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    Rate: 1 USDC = ₦{(business.solanaUsdcNgnRate || 1550).toLocaleString()}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Actions */}

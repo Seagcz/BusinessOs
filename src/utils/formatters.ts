@@ -514,6 +514,36 @@ export function generateInvoiceHtmlDocument(invoice: Invoice, business: Business
         `
             : `<div style="color: #64748b; font-size: 11px;">Payment Method: Cash / Transfer upon receipt.</div>`
         }
+        ${
+          (invoice.solanaPaymentEnabled || business.solanaUsdcEnabled) && !isPaid
+            ? `
+          <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed #cbd5e1;">
+            <h5 style="color: #059669; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">OPTIONAL: SOLANA USDC SETTLEMENT</h5>
+            <div style="font-size: 11px; color: #334155;">Amount in USDC: <strong style="font-family: monospace; color: #059669;">${(
+              (invoice.balanceDue || invoice.totalAmount) /
+              (invoice.solanaUsdcRate || business.solanaUsdcNgnRate || 1550)
+            ).toFixed(2)} USDC</strong></div>
+            <div style="font-size: 10px; color: #64748b; word-break: break-all; margin-top: 2px;">Address: <span style="font-family: monospace;">${
+              business.solanaWalletAddress || '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU'
+            }</span></div>
+            <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">Network: Solana Mainnet-Beta (SPL USDC)</div>
+          </div>
+        `
+            : ''
+        }
+        ${
+          invoice.solanaSignature
+            ? `
+          <div style="margin-top: 12px; padding: 8px 10px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px;">
+            <div style="font-size: 10px; font-weight: 800; color: #065f46; text-transform: uppercase;">SETTLED ON SOLANA MAINNET</div>
+            <div style="font-size: 10px; color: #047857; font-family: monospace; word-break: break-all;">Tx: ${invoice.solanaSignature.slice(0, 32)}...</div>
+            <div style="font-size: 10px; color: #059669; font-weight: 700; margin-top: 2px;">Verified: ${
+              invoice.solanaUsdcAmount ? `${invoice.solanaUsdcAmount.toFixed(2)} USDC` : 'USDC'
+            }</div>
+          </div>
+        `
+            : ''
+        }
       </div>
 
       <div class="totals-table">

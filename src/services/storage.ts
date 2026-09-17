@@ -17,6 +17,7 @@ import {
   SyncQueueItem,
   OfflineSyncSummary,
   CartDraft,
+  SolanaTransaction,
 } from '../types';
 
 import {
@@ -29,6 +30,7 @@ import {
   SAMPLE_EXPENSES,
   SAMPLE_INVOICES,
   SAMPLE_AUDIT_LOGS,
+  SAMPLE_SOLANA_TRANSACTIONS,
 } from './nigerianData';
 
 const STORAGE_KEYS = {
@@ -43,6 +45,7 @@ const STORAGE_KEYS = {
   DEBTS: 'sbos_debts',
   EXPENSES: 'sbos_expenses',
   INVOICES: 'sbos_invoices',
+  SOLANA_TRANSACTIONS: 'sbos_solana_transactions',
   AUDIT_LOGS: 'sbos_audit_logs',
   NOTIFICATIONS: 'sbos_notifications',
   LAST_SYNC: 'sbos_last_sync',
@@ -147,6 +150,7 @@ export class BusinessStorageService {
       setStored(STORAGE_KEYS.DEBTS, SAMPLE_DEBTS);
       setStored(STORAGE_KEYS.EXPENSES, SAMPLE_EXPENSES);
       setStored(STORAGE_KEYS.INVOICES, SAMPLE_INVOICES);
+      setStored(STORAGE_KEYS.SOLANA_TRANSACTIONS, SAMPLE_SOLANA_TRANSACTIONS);
 
       const sampleSales: Sale[] = [
         {
@@ -1066,6 +1070,60 @@ export class BusinessStorageService {
     }
   }
 
+  // Solana Blockchain Transactions & Records
+  static getSolanaTransactions(businessId?: string): SolanaTransaction[] {
+    this.initialize();
+    const txs = getStored(STORAGE_KEYS.SOLANA_TRANSACTIONS, SAMPLE_SOLANA_TRANSACTIONS);
+    if (businessId) {
+      return txs.filter((t: SolanaTransaction) => !t.businessId || t.businessId === businessId);
+    }
+    return txs;
+  }
+
+  static saveSolanaTransaction(tx: SolanaTransaction, staffName: string = 'Staff'): void {
+    const txs = this.getSolanaTransactions();
+    const idx = txs.findIndex(
+      (t) => t.id === tx.id || (tx.signature && tx.signature.length > 20 && t.signature === tx.signature)
+    );
+    const isNew = idx < 0;
+    if (idx >= 0) {
+      txs[idx] = { ...txs[idx], ...tx };
+    } else {
+      txs.unshift(tx);
+    }
+    setStored(STORAGE_KEYS.SOLANA_TRANSACTIONS, txs);
+    this.logActivity(
+      isNew ? 'Solana Payment Recorded' : 'Solana Tx Updated',
+      `${tx.type.toUpperCase()} on-chain record ${tx.signature ? tx.signature.slice(0, 8) + '...' : ''} status: ${tx.status.toUpperCase()} (${tx.amountUsdc} USDC ≈ ₦${(tx.amountNgn || 0).toLocaleString()})`,
+      'financial',
+      staffName
+    );
+  }
+
+  static updateSolanaTransaction(id: string, updates: Partial<SolanaTransaction>): void {
+    const txs = this.getSolanaTransactions();
+    const idx = txs.findIndex((t) => t.id === id);
+    if (idx >= 0) {
+      txs[idx] = { ...txs[idx], ...updates };
+      setStored(STORAGE_KEYS.SOLANA_TRANSACTIONS, txs);
+    }
+  }
+
+  static deleteSolanaTransaction(id: string, staffName: string = 'Staff'): void {
+    const txs = this.getSolanaTransactions();
+    const target = txs.find((t) => t.id === id);
+    const updated = txs.filter((t) => t.id !== id);
+    setStored(STORAGE_KEYS.SOLANA_TRANSACTIONS, updated);
+    if (target) {
+      this.logActivity(
+        'Solana Tx Removed',
+        `On-chain record for ${target.amountUsdc} USDC (${target.signature.slice(0, 8)}...) removed.`,
+        'financial',
+        staffName
+      );
+    }
+  }
+
   // Notifications
   static getNotifications(businessId?: string): AppNotification[] {
     this.initialize();
@@ -1404,6 +1462,7 @@ export class BusinessStorageService {
       debts: this.getDebts(),
       expenses: this.getExpenses(),
       invoices: this.getInvoices(),
+      solanaTransactions: this.getSolanaTransactions(),
       auditLogs: this.getAuditLogs(),
     };
     return JSON.stringify(backup, null, 2);
@@ -1423,6 +1482,7 @@ export class BusinessStorageService {
       if (parsed.debts) setStored(STORAGE_KEYS.DEBTS, parsed.debts);
       if (parsed.expenses) setStored(STORAGE_KEYS.EXPENSES, parsed.expenses);
       if (parsed.invoices) setStored(STORAGE_KEYS.INVOICES, parsed.invoices);
+      if (parsed.solanaTransactions) setStored(STORAGE_KEYS.SOLANA_TRANSACTIONS, parsed.solanaTransactions);
       if (parsed.auditLogs) setStored(STORAGE_KEYS.AUDIT_LOGS, parsed.auditLogs);
       return true;
     } catch {
