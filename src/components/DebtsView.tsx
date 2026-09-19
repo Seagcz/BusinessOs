@@ -1286,13 +1286,15 @@ export const DebtsView: React.FC<DebtsViewProps> = ({
             </div>
 
             {/* Bank details note */}
-            <div className="p-3 bg-slate-950/70 rounded-xl border border-slate-800/80 flex items-center gap-2 text-xs text-slate-400">
-              <Building2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              <span>
-                Default Bank Account: <strong>{business.bankAccounts[0]?.bankName || 'Moniepoint'}</strong> (
-                {business.bankAccounts[0]?.accountNumber || '8123456789'})
-              </span>
-            </div>
+            {business.privateAccountNumber || business.bankAccounts[0]?.accountNumber ? (
+              <div className="p-3 bg-slate-950/70 rounded-xl border border-slate-800/80 flex items-center gap-2 text-xs text-slate-400">
+                <Building2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>
+                  Settlement Bank: <strong>{business.privateAccountBank || business.bankAccounts[0]?.bankName}</strong> (
+                  {business.privateAccountNumber || business.bankAccounts[0]?.accountNumber})
+                </span>
+              </div>
+            ) : null}
 
             {/* Modal Actions */}
             <div className="pt-2 flex gap-2">

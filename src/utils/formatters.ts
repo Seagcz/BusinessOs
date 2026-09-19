@@ -93,25 +93,36 @@ export function buildWhatsAppDebtReminderUrl(
 ): string {
   const cleanPhone = cleanPhoneNumber(debt.customerPhone);
   const amountStr = formatMoney(debt.balanceDue, business, true);
-  const defaultBank = business.bankAccounts.find((b) => b.isDefault) || business.bankAccounts[0];
+  const defaultBank =
+    business.privateAccountNumber
+      ? {
+          bankName: business.privateAccountBank || 'Bank Transfer',
+          accountNumber: business.privateAccountNumber,
+          accountName: business.privateAccountName || business.name,
+        }
+      : business.bankAccounts.find((b) => b.isDefault) || business.bankAccounts[0];
 
   let message = '';
   if (tone === 'polite') {
     message = `Hello ${debt.customerName},\n\n` +
       `Trust you are doing great today. This is a gentle reminder from *${business.name}* regarding your outstanding balance of *${amountStr}*${debt.dueDate ? ` which is due on ${debt.dueDate}` : ''}.\n\n` +
-      `Kindly find our payment details below for your transfer:\n` +
-      `🏦 *Bank:* ${defaultBank?.bankName || 'Moniepoint'}\n` +
-      `🔢 *Account No:* ${defaultBank?.accountNumber || '8123456789'}\n` +
-      `👤 *Account Name:* ${defaultBank?.accountName || business.name}\n\n` +
+      (defaultBank?.accountNumber
+        ? `Kindly find our payment details below for your transfer:\n` +
+          `🏦 *Bank:* ${defaultBank.bankName}\n` +
+          `🔢 *Account No:* ${defaultBank.accountNumber}\n` +
+          `👤 *Account Name:* ${defaultBank.accountName}\n\n`
+        : `Please contact us at ${business.phone || 'our store'} for settlement details.\n\n`) +
       `Please send us a screenshot once payment is completed. Thank you for your continued patronage! 🙏`;
   } else if (tone === 'standard') {
     message = `Dear ${debt.customerName},\n\n` +
       `This is an official payment reminder from *${business.name}*.\n` +
       `You have a pending debt balance of *${amountStr}*${debt.receiptNumber ? ` (Receipt: ${debt.receiptNumber})` : ''}.\n\n` +
-      `Please make payment to:\n` +
-      `• Bank: ${defaultBank?.bankName}\n` +
-      `• Acct No: ${defaultBank?.accountNumber}\n` +
-      `• Name: ${defaultBank?.accountName}\n\n` +
+      (defaultBank?.accountNumber
+        ? `Please make payment to:\n` +
+          `• Bank: ${defaultBank.bankName}\n` +
+          `• Acct No: ${defaultBank.accountNumber}\n` +
+          `• Name: ${defaultBank.accountName}\n\n`
+        : `Please contact us at ${business.phone || 'our store'} to complete settlement.\n\n`) +
       `Thank you for prompt settlement. Reach us on ${business.phone} for any inquiries.`;
   } else {
     message = `⚠️ *URGENT PAYMENT NOTICE*\n\n` +
@@ -515,7 +526,7 @@ export function generateInvoiceHtmlDocument(invoice: Invoice, business: Business
             : `<div style="color: #64748b; font-size: 11px;">Payment Method: Cash / Transfer upon receipt.</div>`
         }
         ${
-          (invoice.solanaPaymentEnabled || business.solanaUsdcEnabled) && !isPaid
+          (invoice.solanaPaymentEnabled || business.solanaUsdcEnabled) && business.solanaWalletAddress && !isPaid
             ? `
           <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed #cbd5e1;">
             <h5 style="color: #059669; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">OPTIONAL: SOLANA USDC SETTLEMENT</h5>
@@ -524,7 +535,7 @@ export function generateInvoiceHtmlDocument(invoice: Invoice, business: Business
               (invoice.solanaUsdcRate || business.solanaUsdcNgnRate || 1550)
             ).toFixed(2)} USDC</strong></div>
             <div style="font-size: 10px; color: #64748b; word-break: break-all; margin-top: 2px;">Address: <span style="font-family: monospace;">${
-              business.solanaWalletAddress || '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU'
+              business.solanaWalletAddress
             }</span></div>
             <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">Network: Solana Mainnet-Beta (SPL USDC)</div>
           </div>
@@ -636,11 +647,13 @@ export function buildWhatsAppCustomerStatementUrl(
     `💰 *CURRENT OUTSTANDING BALANCE:* *${formatMoney(totalBalance, business, true)}*\n` +
     `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
     (debtItemsList ? `*ACTIVE UNPAID ITEMS:*\n${debtItemsList}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n` : '') +
-    `*SETTLEMENT ACCOUNT:*\n` +
-    `🏦 Bank: ${defaultBank?.bankName || 'Moniepoint MFB'}\n` +
-    `🔢 Account No: *${defaultBank?.accountNumber || '8123456789'}*\n` +
-    `👤 Account Name: ${defaultBank?.accountName || business.name}\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+    (defaultBank?.accountNumber
+      ? `*SETTLEMENT ACCOUNT:*\n` +
+        `🏦 Bank: ${defaultBank.bankName}\n` +
+        `🔢 Account No: *${defaultBank.accountNumber}*\n` +
+        `👤 Account Name: ${defaultBank.accountName}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
+      : '') +
     `Kindly send payment confirmation once transferred. Thank you for your continued partnership! 🙏`;
 
   if (cleanPhone) {

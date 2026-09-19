@@ -56,8 +56,7 @@ export const BlockchainView: React.FC<BlockchainViewProps> = ({
   onNavigateTab,
 }) => {
   // Wallet Address & Settings
-  const walletAddress =
-    business.solanaWalletAddress || '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
+  const walletAddress = business.solanaWalletAddress || '';
   const exchangeRate = business.solanaUsdcNgnRate || DEFAULT_NGN_USDC_RATE;
 
   // Live Balances
@@ -90,7 +89,11 @@ export const BlockchainView: React.FC<BlockchainViewProps> = ({
 
   // Fetch balances on mount or address change
   const fetchLiveBalances = async () => {
-    if (!walletAddress) return;
+    if (!walletAddress) {
+      setSolBalance(null);
+      setUsdcBalance(null);
+      return;
+    }
     setIsLoadingBalances(true);
     try {
       const [sol, usdc] = await Promise.all([
@@ -331,54 +334,78 @@ export const BlockchainView: React.FC<BlockchainViewProps> = ({
         <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          {/* Left: Address and Network */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Solana Mainnet-Beta</span>
-              </span>
-              <span className="text-xs text-slate-400">
-                Settlement Token: <strong className="text-slate-200">USDC (SPL)</strong>
-              </span>
-            </div>
-
-            <div>
-              <p className="text-xs text-slate-400 font-medium">Business Settlement Wallet</p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="font-mono text-sm sm:text-base font-bold text-slate-100 break-all">
-                  {walletAddress}
+          {walletAddress ? (
+            /* Left: Address and Network */
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Solana Mainnet-Beta</span>
                 </span>
-                <button
-                  onClick={() => copyToClipboard(walletAddress, 'wallet')}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex-shrink-0"
-                  title="Copy Wallet Address"
-                >
-                  {copiedItem === 'wallet' ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setIsQrModalOpen(true)}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex-shrink-0"
-                  title="Show QR Code"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                </button>
-                <a
-                  href={solanaService.getExplorerUrl(walletAddress, 'address', 'mainnet-beta')}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex-shrink-0"
-                  title="View on Solana Explorer"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                <span className="text-xs text-slate-400">
+                  Settlement Token: <strong className="text-slate-200">USDC (SPL)</strong>
+                </span>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Business Settlement Wallet</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-mono text-sm sm:text-base font-bold text-slate-100 break-all">
+                    {walletAddress}
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(walletAddress, 'wallet')}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex-shrink-0"
+                    title="Copy Wallet Address"
+                  >
+                    {copiedItem === 'wallet' ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setIsQrModalOpen(true)}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex-shrink-0"
+                    title="Show QR Code"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                  </button>
+                  <a
+                    href={solanaService.getExplorerUrl(walletAddress, 'address', 'mainnet-beta')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex-shrink-0"
+                    title="View on Solana Explorer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2 py-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                  No Wallet Connected
+                </span>
+                <span className="text-xs text-slate-400">Solana Mainnet-Beta</span>
+              </div>
+              <h3 className="text-base font-bold text-slate-100">Store Solana Wallet Not Set Up</h3>
+              <p className="text-xs text-slate-400 max-w-md">
+                Connect your business Phantom/Solflare wallet or link your Solana receiving address to accept instant USDC payments at POS.
+              </p>
+              <div className="pt-1">
+                <button
+                  onClick={() => setIsWalletConfigOpen(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Wallet className="w-4 h-4" />
+                  <span>Configure Private Wallet</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Right: Live Balances & Rate */}
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80">
@@ -897,7 +924,7 @@ export const BlockchainView: React.FC<BlockchainViewProps> = ({
       )}
 
       {/* MODAL 3: QR Code Display for Store Wallet */}
-      {isQrModalOpen && (
+      {isQrModalOpen && walletAddress && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center space-y-4 shadow-2xl animate-in fade-in">
             <div className="flex items-center justify-between">

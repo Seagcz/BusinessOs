@@ -54,8 +54,7 @@ export const SolanaPaymentModal: React.FC<SolanaPaymentModalProps> = ({
   memoText,
   onPaymentConfirmed,
 }) => {
-  const recipientAddress =
-    business.solanaWalletAddress || '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
+  const recipientAddress = business.solanaWalletAddress || '';
   const exchangeRate = business.solanaUsdcNgnRate || DEFAULT_NGN_USDC_RATE;
   const amountUsdc = solanaService.convertNgnToUsdc(amountNgn, exchangeRate);
 
@@ -243,6 +242,25 @@ export const SolanaPaymentModal: React.FC<SolanaPaymentModalProps> = ({
                   className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl transition cursor-pointer shadow-lg shadow-emerald-950"
                 >
                   Done
+                </button>
+              </div>
+            </div>
+          ) : !recipientAddress ? (
+            <div className="p-6 bg-purple-950/40 border border-purple-800/80 rounded-2xl text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center mx-auto">
+                <AlertCircle className="w-7 h-7" />
+              </div>
+              <h4 className="text-base font-bold text-purple-200">No Private Solana Wallet Configured</h4>
+              <p className="text-xs text-slate-300 max-w-sm mx-auto leading-relaxed">
+                To accept Solana USDC settlements, configure your business's private Solana wallet address in Settlement Settings or Admin Settings.
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition"
+                >
+                  Close & Set Up Wallet
                 </button>
               </div>
             </div>

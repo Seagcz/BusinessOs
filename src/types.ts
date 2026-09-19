@@ -87,6 +87,10 @@ export interface BusinessProfile {
   cacNumber?: string;
   tinNumber?: string;
   logoEmoji?: string;
+  // Private Settlement Accounts (Bank & Solana Wallet Pair that work together)
+  privateAccountNumber?: string; // 10-digit NUBAN account number
+  privateAccountBank?: string; // Nigerian Bank name (e.g. Moniepoint, GTBank, OPay)
+  privateAccountName?: string; // Account holder / beneficiary name
   bankAccounts: BankAccount[];
   currencyCode: 'NGN' | 'USD' | 'GBP' | 'EUR' | 'GHS' | 'KES' | 'RAW' | string;
   currencySymbol: string;
@@ -102,11 +106,12 @@ export interface BusinessProfile {
   enableDailyClosingAlert?: boolean;
   enableWhatsAppReceipt?: boolean;
   receiptFooterMessage?: string;
-  // Optional Solana Blockchain Settlement
+  // Solana Blockchain Settlement (Linked with Private Account)
   solanaWalletAddress?: string; // Solana mainnet public key (Base58)
   solanaUsdcEnabled?: boolean; // Accept USDC on Solana
   solanaUsdcNgnRate?: number; // Custom or cached exchange rate (e.g., 1550 NGN = 1 USDC)
   solanaCluster?: 'mainnet-beta' | 'devnet'; // Defaults to mainnet-beta
+  isConfigured?: boolean; // True once business has set up real details
   createdAt: string;
 }
 
@@ -215,6 +220,7 @@ export interface Sale {
   notes?: string;
   status: 'completed' | 'voided' | 'refunded';
   voidReason?: string;
+  solanaSignature?: string;
   createdAt: string;
   date?: string; // alias for createdAt
   isSynced: boolean;
@@ -348,10 +354,15 @@ export interface Invoice {
   // Optional Solana Settlement Details
   solanaPaymentEnabled?: boolean;
   solanaUsdcAmount?: number;
+  solanaUsdcRate?: number;
   solanaRecipientAddress?: string;
   solanaSignature?: string;
+  solanaStatus?: 'pending' | 'confirmed' | 'failed';
   solanaPayerWallet?: string;
+  solanaPayerAddress?: string;
   solanaConfirmedAt?: string;
+  solanaSlot?: number;
+  solanaBlockTime?: number;
   solanaExplorerUrl?: string;
   createdAt: string;
 }

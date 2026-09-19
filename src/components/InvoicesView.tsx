@@ -2047,6 +2047,20 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
                 <span>Copy Text</span>
               </button>
 
+              {previewInvoice.balanceDue > 0 && (previewInvoice.solanaPaymentEnabled || business.solanaUsdcEnabled) && (
+                <button
+                  onClick={() => {
+                    setSolanaTargetInvoice(previewInvoice);
+                    setIsSolanaModalOpen(true);
+                  }}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-purple-700 to-emerald-600 hover:from-purple-600 hover:to-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+                  title="Receive payment on Solana Mainnet in USDC"
+                >
+                  <span className="font-mono font-black text-sm">◎</span>
+                  <span>Settle with Solana USDC</span>
+                </button>
+              )}
+
               <button
                 onClick={() => handleDownloadInvoice(previewInvoice)}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
@@ -2075,6 +2089,24 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Solana USDC Payment Modal */}
+      {isSolanaModalOpen && solanaTargetInvoice && (
+        <SolanaPaymentModal
+          isOpen={isSolanaModalOpen}
+          onClose={() => {
+            setIsSolanaModalOpen(false);
+            setSolanaTargetInvoice(null);
+          }}
+          business={business}
+          amountNgn={solanaTargetInvoice.balanceDue > 0 ? solanaTargetInvoice.balanceDue : solanaTargetInvoice.totalAmount}
+          invoiceId={solanaTargetInvoice.id}
+          invoiceNumber={solanaTargetInvoice.invoiceNumber}
+          customerName={solanaTargetInvoice.customerName}
+          customerPhone={solanaTargetInvoice.customerPhone}
+          onPaymentConfirmed={handleSolanaPaymentConfirmed}
+        />
       )}
     </div>
   );

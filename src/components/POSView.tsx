@@ -29,6 +29,10 @@ import {
   Store,
   DollarSign,
   TrendingUp,
+  ShieldCheck,
+  ExternalLink,
+  QrCode,
+  Copy,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -44,6 +48,8 @@ import {
 import { formatMoney, generateReceiptNumber } from '../utils/formatters';
 import { SalesHistoryView } from './SalesHistoryView';
 import { storageService } from '../services/storage';
+import { SolanaPaymentModal } from './SolanaPaymentModal';
+import { PrivateSettlementModal } from './PrivateSettlementModal';
 
 interface ParkedCart {
   id: string;
@@ -66,6 +72,7 @@ interface POSViewProps {
   onQuickAddCustomer: (customer: Customer) => void;
   onOpenReceipt: (sale: Sale) => void;
   onVoidSale?: (saleId: string, reason: string) => void;
+  onUpdateBusiness?: (updated: BusinessProfile) => void;
   initialSubTab?: 'register' | 'history' | 'parked';
 }
 
@@ -79,6 +86,7 @@ export const POSView: React.FC<POSViewProps> = ({
   onQuickAddCustomer,
   onOpenReceipt,
   onVoidSale,
+  onUpdateBusiness,
   initialSubTab = 'register',
 }) => {
   // Main subview state: Register | Sales History | Parked Carts
@@ -179,6 +187,13 @@ export const POSView: React.FC<POSViewProps> = ({
     new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
   );
   
+  // Solana USDC POS state
+  const [solanaSignature, setSolanaSignature] = useState<string>('');
+  const [isSolanaModalOpen, setIsSolanaModalOpen] = useState<boolean>(false);
+  const [solanaCopied, setSolanaCopied] = useState<boolean>(false);
+  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState<boolean>(false);
+  const [accountCopied, setAccountCopied] = useState<boolean>(false);
+
   // Split payment state
   const [splitCash, setSplitCash] = useState<string>('');
   const [splitTransfer, setSplitTransfer] = useState<string>('');
@@ -435,10 +450,98 @@ export const POSView: React.FC<POSViewProps> = ({
     setIsNewCustomerOpen(false);
   };
 
+  // Handle Solana USDC Payment confirmation from Modal
+  const handleSolanaPosConfirmed = (details: {
+    signature: string;
+    amountUsdc: number;
+    amountNgn: number;
+    exchangeRate: number;
+    payerAddress?: string;
+    recipientAddress: string;
+    slot?: number;
+    blockTime?: number;
+    explorerUrl: string;
+  }) => {
+    setSolanaSignature(details.signature);
+    setIsSolanaModalOpen(false);
+
+    const selectedCust = customers.find((c) => c.id === selectedCustomerId);
+    const receiptNum = generateReceiptNumber();
+
+    const newSale: Sale = {
+      id: 'sale_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      receiptNumber: receiptNum,
+      businessId: business.id,
+      staffId: currentStaff.id,
+      staffName: currentStaff.name,
+      customerId: selectedCust?.id,
+      customerName: selectedCust?.name || (selectedCustomerId ? 'Registered Customer' : 'Walk-in Customer'),
+      customerPhone: selectedCust?.phone,
+      items: cart,
+      subtotal: cartSubtotal,
+      discountAmount,
+      taxAmount,
+      totalAmount,
+      totalCost,
+      profit: estimatedProfit,
+      paymentMethod: 'solana',
+      isCredit: false,
+      notes: `Settled via Solana Mainnet: ${details.amountUsdc} USDC (Tx: ${details.signature.slice(0, 16)}...)`,
+      status: 'completed',
+      createdAt: new Date().toISOString(),
+      isSynced: typeof navigator !== 'undefined' ? navigator.onLine : false,
+      solanaSignature: details.signature,
+    };
+
+    storageService.saveSolanaTransaction(
+      {
+        id: 'sol_pos_' + Date.now(),
+        businessId: business.id,
+        signature: details.signature,
+        type: 'pos_sale',
+        status: 'confirmed',
+        amountUsdc: details.amountUsdc,
+        amountNgn: details.amountNgn,
+        exchangeRate: details.exchangeRate,
+        recipientAddress: details.recipientAddress,
+        payerAddress: details.payerAddress,
+        customerName: newSale.customerName,
+        timestamp: new Date().toISOString(),
+        slot: details.slot,
+        blockTime: details.blockTime,
+        confirmationStatus: 'finalized',
+        explorerUrl: details.explorerUrl,
+        notes: `POS Sale #${receiptNum} settled in USDC on Solana Mainnet`,
+        verifiedAt: new Date().toISOString(),
+      },
+      currentStaff.name
+    );
+
+    try {
+      confetti({
+        particleCount: 85,
+        spread: 70,
+        origin: { y: 0.7 },
+      });
+    } catch {}
+
+    onCompleteSale(newSale);
+    storageService.clearCartDraft(business.id);
+    clearCart();
+    setIsCheckoutOpen(false);
+    setIsCartMobileOpen(false);
+  };
+
   // Process and finalize Sale
   const handleFinalizeSale = () => {
     if (isSubmittingSale) return; // Prevent double-tap on touchscreens
     if (cart.length === 0) return;
+
+    // If Solana is selected but not yet verified, open modal
+    if (paymentMethod === 'solana' && !solanaSignature) {
+      setIsSolanaModalOpen(true);
+      return;
+    }
 
     const selectedCust = customers.find((c) => c.id === selectedCustomerId);
     const isCredit = paymentMethod === 'credit';
@@ -485,6 +588,7 @@ export const POSView: React.FC<POSViewProps> = ({
         paymentMethod,
         splitPayments: splitDetailObj,
         bankTransferReference: paymentMethod === 'transfer' ? transferRef : undefined,
+        solanaSignature: paymentMethod === 'solana' ? (solanaSignature || undefined) : undefined,
         isCredit: isCredit || (paymentMethod === 'split' && (splitDetailObj?.credit || 0) > 0),
         debtDueDate: isCredit ? creditDueDate : undefined,
         notes: saleNotes || undefined,
@@ -1064,13 +1168,14 @@ export const POSView: React.FC<POSViewProps> = ({
 
             <div className="py-4 overflow-y-auto flex-1 space-y-4">
               {/* Payment Method Selector Tabs */}
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                 {[
                   { id: 'cash' as PaymentMethod, label: 'Cash', icon: Banknote },
                   { id: 'transfer' as PaymentMethod, label: 'Transfer', icon: Building2 },
                   { id: 'pos' as PaymentMethod, label: 'POS Card', icon: CreditCard },
                   { id: 'credit' as PaymentMethod, label: 'Credit', icon: BookOpen },
                   { id: 'split' as PaymentMethod, label: 'Split', icon: Layers },
+                  { id: 'solana' as PaymentMethod, label: 'USDC Pay', icon: ShieldCheck },
                 ].map((pm) => {
                   const Icon = pm.icon;
                   const isSelected = paymentMethod === pm.id;
@@ -1080,14 +1185,14 @@ export const POSView: React.FC<POSViewProps> = ({
                       type="button"
                       id={`pos-pm-${pm.id}`}
                       onClick={() => setPaymentMethod(pm.id)}
-                      className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition active:scale-95 text-center ${
+                      className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition active:scale-95 text-center ${
                         isSelected
                           ? 'border-emerald-500 bg-emerald-950/50 text-emerald-300 ring-1 ring-emerald-500 font-black'
                           : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                       }`}
                     >
                       <Icon className="w-4 h-4 mb-1" />
-                      <span className="text-[11px]">{pm.label}</span>
+                      <span className="text-[11px] whitespace-nowrap">{pm.label}</span>
                     </button>
                   );
                 })}
@@ -1151,19 +1256,66 @@ export const POSView: React.FC<POSViewProps> = ({
                 </div>
               )}
 
-              {/* Mode 2: BANK TRANSFER (Store Bank Details) */}
+              {/* Mode 2: BANK TRANSFER (Private Account Settlement) */}
               {paymentMethod === 'transfer' && (
                 <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
-                  <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs space-y-1">
-                    <p className="text-slate-400 font-medium">Customer Transfer Account Details:</p>
-                    <p className="font-bold text-sm text-slate-100">{defaultBank?.bankName || 'Moniepoint MFB'}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-black font-mono text-emerald-400 tracking-wider">
-                        {defaultBank?.accountNumber || '8123456789'}
-                      </span>
-                      <span className="text-[10px] text-slate-400">({defaultBank?.accountName})</span>
+                  {business.privateAccountNumber || defaultBank?.accountNumber ? (
+                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs space-y-2">
+                      <div className="flex items-center justify-between text-slate-400">
+                        <span className="font-medium">Private Settlement Account:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const acc = business.privateAccountNumber || defaultBank?.accountNumber || '';
+                            navigator.clipboard.writeText(acc);
+                            setAccountCopied(true);
+                            setTimeout(() => setAccountCopied(false), 2000);
+                          }}
+                          className="text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>{accountCopied ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <p className="font-bold text-sm text-slate-100">
+                        {business.privateAccountBank || defaultBank?.bankName || 'Bank Transfer'}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-black font-mono text-emerald-400 tracking-wider">
+                          {business.privateAccountNumber || defaultBank?.accountNumber}
+                        </span>
+                        <span className="text-[11px] text-slate-300 font-medium">
+                          ({business.privateAccountName || defaultBank?.accountName || business.name})
+                        </span>
+                      </div>
+                      <div className="pt-1 flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setIsSettlementModalOpen(true)}
+                          className="text-[10px] text-slate-400 hover:text-emerald-400 underline"
+                        >
+                          Change Settlement Account
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-3 bg-amber-950/40 border border-amber-800/80 rounded-xl text-xs text-amber-300 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="font-bold">No Private Bank Account Configured</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        Add your private Nigerian bank account (NUBAN) so cashiers can display payment details to customers.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsSettlementModalOpen(true)}
+                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition cursor-pointer"
+                      >
+                        Set Up Private Account
+                      </button>
+                    </div>
+                  )}
 
                   <div>
                     <label className="text-xs text-slate-400 block mb-1">Transfer Reference / Narration (Optional):</label>
@@ -1286,6 +1438,122 @@ export const POSView: React.FC<POSViewProps> = ({
                         className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl font-mono text-slate-100 text-xs"
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Mode 6: SOLANA USDC SETTLEMENT */}
+              {paymentMethod === 'solana' && (
+                <div className="bg-gradient-to-b from-slate-950 to-slate-900 p-4 rounded-2xl border border-emerald-500/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-emerald-400 text-slate-950 font-black flex items-center justify-center text-sm shadow-md">
+                        ◎
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+                          <span>Solana USDC Settlement</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">
+                            SPL Token
+                          </span>
+                        </p>
+                        <p className="text-[11px] text-slate-400">Instant Finality (~400ms) • Solana Mainnet</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-400">Total in USDC</p>
+                      <p className="text-sm sm:text-base font-black font-mono text-emerald-400">
+                        {(totalAmount / (business.solanaUsdcNgnRate || 1550)).toFixed(2)} USDC
+                      </p>
+                    </div>
+                  </div>
+
+                  {business.solanaWalletAddress ? (
+                    <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">Private Solana Wallet Address:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(business.solanaWalletAddress);
+                            setSolanaCopied(true);
+                            setTimeout(() => setSolanaCopied(false), 2000);
+                          }}
+                          className="text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>{solanaCopied ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <p className="text-[11px] font-mono text-slate-300 break-all bg-slate-900 p-2 rounded-lg border border-slate-800">
+                        {business.solanaWalletAddress}
+                      </p>
+
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 pt-1">
+                        <span>Rate: 1 USDC = ₦{(business.solanaUsdcNgnRate || 1550).toLocaleString()}</span>
+                        <span>Network Fee: &lt; ₦0.50</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-purple-950/40 border border-purple-800/80 rounded-xl text-xs text-purple-300 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-purple-400 shrink-0" />
+                        <span className="font-bold">No Private Solana Wallet Linked</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        Paste your existing Solana address or generate a brand new private keypair in 1 click to accept USDC.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsSettlementModalOpen(true)}
+                        className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg text-xs transition cursor-pointer"
+                      >
+                        Configure Private Wallet
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      disabled={!business.solanaWalletAddress}
+                      onClick={() => setIsSolanaModalOpen(true)}
+                      className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-emerald-600 hover:from-purple-500 hover:to-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition disabled:opacity-50"
+                    >
+                      <QrCode className="w-4 h-4" />
+                      <span>Show Solana Pay QR & Live Blockchain Verifier</span>
+                    </button>
+
+                    {solanaSignature ? (
+                      <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs text-emerald-300">
+                        <div className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                          <span>Tx Verified: <strong className="font-mono">{solanaSignature.slice(0, 16)}...</strong></span>
+                        </div>
+                        <a
+                          href={`https://explorer.solana.com/tx/${solanaSignature}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-emerald-400 underline flex items-center gap-0.5"
+                        >
+                          <span>Explorer</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="text-[11px] text-slate-400 block mb-1">
+                          Or enter verified Solana Transaction Signature:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 5K6F9mN..."
+                          value={solanaSignature}
+                          onChange={(e) => setSolanaSignature(e.target.value.trim())}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl font-mono text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1547,6 +1815,29 @@ export const POSView: React.FC<POSViewProps> = ({
             </button>
           </form>
         </div>
+      )}
+
+      {/* Solana Payment Modal */}
+      {isSolanaModalOpen && (
+        <SolanaPaymentModal
+          isOpen={isSolanaModalOpen}
+          onClose={() => setIsSolanaModalOpen(false)}
+          business={business}
+          amountNgn={totalAmount}
+          customerName={customers.find((c) => c.id === selectedCustomerId)?.name || (selectedCustomerId ? 'Customer' : 'Walk-in')}
+          customerPhone={customers.find((c) => c.id === selectedCustomerId)?.phone}
+          onPaymentConfirmed={handleSolanaPosConfirmed}
+        />
+      )}
+
+      {/* Private Settlement Modal */}
+      {isSettlementModalOpen && onUpdateBusiness && (
+        <PrivateSettlementModal
+          isOpen={isSettlementModalOpen}
+          onClose={() => setIsSettlementModalOpen(false)}
+          business={business}
+          onUpdateBusiness={onUpdateBusiness}
+        />
       )}
     </div>
   );

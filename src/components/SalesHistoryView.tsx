@@ -829,7 +829,7 @@ export const SalesHistoryView: React.FC<SalesHistoryViewProps> = ({
                 <option value="Incorrect item or quantity entered">Incorrect item or quantity entered</option>
                 <option value="Customer changed mind before paying">Customer changed mind before paying</option>
                 <option value="Payment reversed / failed">Bank transfer / POS Payment failed</option>
-                <option value="Test / demo transaction">Test / demo transaction</option>
+                <option value="Test transaction">Test transaction</option>
                 <option value="Other">Other reason (specify below)</option>
               </select>
             </div>

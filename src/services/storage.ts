@@ -139,7 +139,18 @@ function setStored<T>(key: string, data: T): void {
 
 export class BusinessStorageService {
   static initialize() {
-    if (!localStorage.getItem(STORAGE_KEYS.CURRENT_BIZ)) {
+    const existingBiz = getStored<any>(STORAGE_KEYS.CURRENT_BIZ, null);
+    const existingNotifs = getStored<any[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+    const existingSales = getStored<any[]>(STORAGE_KEYS.SALES, []);
+
+    // Detect legacy demo artifacts and automatically purge them
+    const hasDemoArtifacts =
+      existingBiz?.name === 'Ade & Sons Superstores' ||
+      existingBiz?.solanaWalletAddress === '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU' ||
+      existingNotifs?.some((n) => n.id === 'notif_1' || n.title?.includes('Dangote Sugar')) ||
+      existingSales?.some((s) => s.id === 'sale_demo_1');
+
+    if (!existingBiz || hasDemoArtifacts) {
       setStored(STORAGE_KEYS.CURRENT_BIZ, INITIAL_BUSINESS_PROFILE);
       setStored(STORAGE_KEYS.ALL_BIZ, [INITIAL_BUSINESS_PROFILE]);
       setStored(STORAGE_KEYS.STAFF_USERS, INITIAL_STAFF);
@@ -151,121 +162,8 @@ export class BusinessStorageService {
       setStored(STORAGE_KEYS.EXPENSES, SAMPLE_EXPENSES);
       setStored(STORAGE_KEYS.INVOICES, SAMPLE_INVOICES);
       setStored(STORAGE_KEYS.SOLANA_TRANSACTIONS, SAMPLE_SOLANA_TRANSACTIONS);
-
-      const sampleSales: Sale[] = [
-        {
-          id: 'sale_demo_1',
-          receiptNumber: 'REC-260820-1042',
-          businessId: INITIAL_BUSINESS_PROFILE.id,
-          staffId: INITIAL_STAFF[0].id,
-          staffName: INITIAL_STAFF[0].name,
-          customerName: 'Walk-in Customer',
-          items: [
-            {
-              productId: SAMPLE_PRODUCTS[0].id,
-              productName: SAMPLE_PRODUCTS[0].name,
-              unitPrice: 850,
-              costPrice: 650,
-              quantity: 2,
-              subtotal: 1700,
-              unit: 'pcs',
-            },
-            {
-              productId: SAMPLE_PRODUCTS[1].id,
-              productName: SAMPLE_PRODUCTS[1].name,
-              unitPrice: 700,
-              costPrice: 520,
-              quantity: 3,
-              subtotal: 2100,
-              unit: 'tin',
-            },
-          ],
-          subtotal: 3800,
-          discountAmount: 0,
-          taxAmount: 0,
-          totalAmount: 3800,
-          total: 3800,
-          totalCost: 2860,
-          costTotal: 2860,
-          profit: 940,
-          paymentMethod: 'transfer',
-          bankTransferReference: 'MNP-TRF-98214',
-          isCredit: false,
-          status: 'completed',
-          createdAt: new Date(Date.now() - 3 * 3600000).toISOString(),
-          date: new Date(Date.now() - 3 * 3600000).toISOString(),
-          isSynced: true,
-        },
-        {
-          id: 'sale_demo_2',
-          receiptNumber: 'REC-260820-1088',
-          businessId: INITIAL_BUSINESS_PROFILE.id,
-          staffId: INITIAL_STAFF[1].id,
-          staffName: INITIAL_STAFF[1].name,
-          customerId: SAMPLE_CUSTOMERS[1].id,
-          customerName: SAMPLE_CUSTOMERS[1].name,
-          customerPhone: SAMPLE_CUSTOMERS[1].phone,
-          items: [
-            {
-              productId: SAMPLE_PRODUCTS[4].id,
-              productName: SAMPLE_PRODUCTS[4].name,
-              unitPrice: 10200,
-              costPrice: 8900,
-              quantity: 1,
-              subtotal: 10200,
-              unit: 'carton',
-            },
-            {
-              productId: SAMPLE_PRODUCTS[7].id,
-              productName: SAMPLE_PRODUCTS[7].name,
-              unitPrice: 4000,
-              costPrice: 3200,
-              quantity: 1,
-              subtotal: 4000,
-              unit: 'pack',
-            },
-          ],
-          subtotal: 14200,
-          discountAmount: 200,
-          taxAmount: 0,
-          totalAmount: 14000,
-          total: 14000,
-          totalCost: 12100,
-          costTotal: 12100,
-          profit: 1900,
-          paymentMethod: 'pos',
-          isCredit: false,
-          status: 'completed',
-          createdAt: new Date(Date.now() - 1 * 3600000).toISOString(),
-          date: new Date(Date.now() - 1 * 3600000).toISOString(),
-          isSynced: true,
-        },
-      ];
-      setStored(STORAGE_KEYS.SALES, sampleSales);
-
-      const initialNotifications: AppNotification[] = [
-        {
-          id: 'notif_1',
-          type: 'low_stock',
-          title: 'Low Stock Alert: Dangote Sugar',
-          message: 'Only 2 packs remaining in store (Threshold: 6). Re-order recommended.',
-          timestamp: new Date().toISOString(),
-          isRead: false,
-          read: false,
-          linkTab: 'inventory',
-        },
-        {
-          id: 'notif_2',
-          type: 'debt_overdue',
-          title: 'Overdue Debt: Babatunde Adeleke',
-          message: 'Debt of ₦18,500 is overdue by 2 days. Tap to send polite WhatsApp reminder.',
-          timestamp: new Date().toISOString(),
-          isRead: false,
-          read: false,
-          linkTab: 'debts',
-        },
-      ];
-      setStored(STORAGE_KEYS.NOTIFICATIONS, initialNotifications);
+      setStored(STORAGE_KEYS.SALES, []);
+      setStored(STORAGE_KEYS.NOTIFICATIONS, []);
       setStored(STORAGE_KEYS.AUDIT_LOGS, SAMPLE_AUDIT_LOGS);
       setStored(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
     }
@@ -1490,9 +1388,16 @@ export class BusinessStorageService {
     }
   }
 
-  static resetToDemoData(): void {
+  /**
+   * Clears all database records and returns store to a pristine, clean-slate state with no demo data.
+   */
+  static clearAllStoreData(): void {
     localStorage.clear();
     this.initialize();
+  }
+
+  static resetToDemoData(): void {
+    this.clearAllStoreData();
   }
 
   // --- OFFLINE SYNC QUEUE & IDEMPOTENCY ENGINE ---

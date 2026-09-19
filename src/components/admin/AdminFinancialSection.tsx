@@ -13,9 +13,12 @@ import {
   ShieldCheck,
   Copy,
   X,
+  Zap,
+  Building2,
 } from 'lucide-react';
 import { BusinessProfile, BankAccount } from '../../types';
 import { NIGERIAN_BANKS } from '../../services/nigerianData';
+import { PrivateSettlementModal } from '../PrivateSettlementModal';
 
 interface AdminFinancialSectionProps {
   business: BusinessProfile;
@@ -37,6 +40,7 @@ export const AdminFinancialSection: React.FC<AdminFinancialSectionProps> = ({
   const [formAccountName, setFormAccountName] = useState('');
   const [formIsDefault, setFormIsDefault] = useState(false);
   const [copiedBankId, setCopiedBankId] = useState<string | null>(null);
+  const [isPrivateSettlementModalOpen, setIsPrivateSettlementModalOpen] = useState(false);
 
   // Financial Rules State
   const [taxRate, setTaxRate] = useState<number>(business.taxRate || 0);
@@ -163,6 +167,104 @@ export const AdminFinancialSection: React.FC<AdminFinancialSectionProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* 0. Private Account & Solana Settlement Engine */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800 rounded-3xl p-5 sm:p-7 space-y-5 shadow-xl relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                <Zap className="w-3 h-3 text-purple-400" />
+                Dual-Channel Settlement
+              </span>
+              <span className="text-xs text-slate-400 font-mono">Bank + Web3 Linked</span>
+            </div>
+            <h3 className="font-bold text-lg text-white">Private Account & Solana Wallet Integration</h3>
+            <p className="text-xs text-slate-400 mt-0.5 max-w-2xl">
+              Connect your store's private settlement bank account number and Solana wallet address to work in synergy for point-of-sale checkouts, debt recovery, and instant crypto settlements.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsPrivateSettlementModalOpen(true)}
+            className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-emerald-600 hover:from-purple-500 hover:to-emerald-500 text-white text-xs font-bold rounded-xl transition shadow-lg flex items-center gap-2 shrink-0 cursor-pointer active:scale-95"
+          >
+            <Wallet className="w-4 h-4" />
+            <span>Configure Private Accounts</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Private Bank Account */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800/90 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-emerald-400" />
+                <span>Private Bank Account Number</span>
+              </span>
+              {business.privateAccountNumber ? (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold">
+                  Active
+                </span>
+              ) : (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 font-bold">
+                  Unconfigured
+                </span>
+              )}
+            </div>
+
+            {business.privateAccountNumber ? (
+              <div className="space-y-1">
+                <p className="text-lg font-black font-mono text-emerald-400 tracking-wider">
+                  {business.privateAccountNumber}
+                </p>
+                <p className="text-xs text-slate-300 font-medium">
+                  {business.privateBankName || 'Bank Not Specified'} • <span className="uppercase text-slate-400">{business.privateAccountName || business.name}</span>
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic">
+                No private account number configured. Tap "Configure Private Accounts" to set up.
+              </p>
+            )}
+          </div>
+
+          {/* Private Solana Wallet */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800/90 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Wallet className="w-4 h-4 text-purple-400" />
+                <span>Solana Wallet (Mainnet-Beta)</span>
+              </span>
+              {business.solanaWalletAddress ? (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-800 font-bold">
+                  Connected
+                </span>
+              ) : (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 font-bold">
+                  Unconfigured
+                </span>
+              )}
+            </div>
+
+            {business.solanaWalletAddress ? (
+              <div className="space-y-1">
+                <p className="text-xs font-mono font-bold text-slate-200 break-all bg-slate-900/90 p-2 rounded-lg border border-slate-800">
+                  {business.solanaWalletAddress}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Store Exchange Rate: <strong className="text-purple-300">1 USDC = ₦{(business.solanaUsdcNgnRate || 1500).toLocaleString()}</strong>
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic">
+                No Solana wallet linked. Tap "Configure Private Accounts" to connect Phantom, Solflare, or paste your address.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 1. Settlement Bank Accounts */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-7 space-y-5 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
@@ -546,6 +648,14 @@ export const AdminFinancialSection: React.FC<AdminFinancialSectionProps> = ({
           </form>
         </div>
       )}
+
+      {/* PRIVATE SETTLEMENT MODAL (BANK + SOLANA WALLET) */}
+      <PrivateSettlementModal
+        isOpen={isPrivateSettlementModalOpen}
+        onClose={() => setIsPrivateSettlementModalOpen(false)}
+        business={business}
+        onUpdateBusiness={onUpdateBusiness}
+      />
     </div>
   );
 };

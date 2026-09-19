@@ -4,6 +4,7 @@ import {
   LAMPORTS_PER_SOL,
   Transaction,
   SystemProgram,
+  Keypair,
 } from '@solana/web3.js';
 
 // Official Solana Mainnet-Beta USDC Token Mint (6 decimals)
@@ -392,6 +393,27 @@ class SolanaService {
     }
 
     return null;
+  }
+
+  /**
+   * Generates a brand-new cryptographic Keypair for a merchant's private Solana wallet.
+   * Can be generated directly in the browser with no external network exposure.
+   */
+  generateNewKeypair(): {
+    publicKey: string;
+    secretKeyHex: string;
+    secretKeyBytes: number[];
+  } {
+    const kp = Keypair.generate();
+    const bytes = Array.from(kp.secretKey);
+    const hex = Array.from(kp.secretKey)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    return {
+      publicKey: kp.publicKey.toBase58(),
+      secretKeyHex: hex,
+      secretKeyBytes: bytes,
+    };
   }
 
   /**

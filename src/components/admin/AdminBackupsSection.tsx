@@ -110,13 +110,14 @@ export const AdminBackupsSection: React.FC<AdminBackupsSectionProps> = ({
 
   const handleConfirmReset = (e: React.FormEvent) => {
     e.preventDefault();
-    if (resetCodeInput.trim().toUpperCase() !== 'RESET') {
-      alert('Please type RESET in capital letters to confirm.');
+    const code = resetCodeInput.trim().toUpperCase();
+    if (code !== 'CLEAR' && code !== 'RESET') {
+      alert('Please type CLEAR in capital letters to confirm.');
       return;
     }
     onResetDemoData();
     if (onLogActivity) {
-      onLogActivity('Reset to Demo Data', 'Reset all local store data back to initial seed dataset', 'backup');
+      onLogActivity('Purged Store Data', 'Purged all transactions, debts, expenses, and inventory to fresh clean store', 'backup');
     }
     setIsResetConfirmOpen(false);
     setResetCodeInput('');
@@ -315,7 +316,7 @@ export const AdminBackupsSection: React.FC<AdminBackupsSectionProps> = ({
         </div>
       )}
 
-      {/* 3. Danger Zone / Reset Demo Data */}
+      {/* 3. Danger Zone / Purge All Store Data */}
       <div className="bg-rose-950/20 border border-rose-900/40 rounded-3xl p-5 sm:p-7 space-y-4 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
@@ -323,9 +324,9 @@ export const AdminBackupsSection: React.FC<AdminBackupsSectionProps> = ({
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-base text-rose-300">Danger Zone: Reset Store to Demo State</h4>
+              <h4 className="font-bold text-base text-rose-300">Danger Zone: Purge All Store Data</h4>
               <p className="text-xs text-rose-400/80 mt-0.5">
-                Permanently purge current transactions and restore factory default Nigerian sample data (provisions, drinks, sample customers).
+                Permanently purge all sales transactions, debts, expenses, and custom catalog items to start from a completely clean slate.
               </p>
             </div>
           </div>
@@ -333,10 +334,10 @@ export const AdminBackupsSection: React.FC<AdminBackupsSectionProps> = ({
           <button
             type="button"
             onClick={() => setIsResetConfirmOpen(true)}
-            className="px-4 py-2.5 bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-md shrink-0 active:scale-95"
+            className="px-4 py-2.5 bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-md shrink-0 active:scale-95 cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Demo Store</span>
+            <span>Purge All Store Data</span>
           </button>
         </div>
       </div>
@@ -350,21 +351,21 @@ export const AdminBackupsSection: React.FC<AdminBackupsSectionProps> = ({
           >
             <div className="flex items-center gap-2 pb-2 border-b border-slate-800 text-rose-400">
               <AlertTriangle className="w-5 h-5" />
-              <h3 className="font-bold text-base">Confirm Factory Reset</h3>
+              <h3 className="font-bold text-base">Confirm Store Data Purge</h3>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              This action will reset your sales records, debt tracking, inventory modifications, and reset to fresh seed demo data.
+              This action will permanently delete all recorded sales, active debts, customer records, and expenses. Your business name and settings will be preserved in a fresh clean state.
             </p>
 
             <div>
               <label className="text-xs text-slate-400 block mb-1">
-                Type <strong className="text-rose-400 font-mono">RESET</strong> to proceed:
+                Type <strong className="text-rose-400 font-mono">CLEAR</strong> to proceed:
               </label>
               <input
                 type="text"
                 required
-                placeholder="RESET"
+                placeholder="CLEAR"
                 value={resetCodeInput}
                 onChange={(e) => setResetCodeInput(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono font-bold text-center tracking-widest text-rose-400 focus:outline-none focus:border-rose-500"
@@ -386,7 +387,7 @@ export const AdminBackupsSection: React.FC<AdminBackupsSectionProps> = ({
                 type="submit"
                 className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition shadow-md"
               >
-                Confirm Reset
+                Confirm Purge
               </button>
             </div>
           </form>

@@ -31,6 +31,7 @@ import { ExpensesView } from './components/ExpensesView';
 import { InvoicesView } from './components/InvoicesView';
 import { ReportsView } from './components/ReportsView';
 import { AdminView } from './components/AdminView';
+import { BlockchainView } from './components/BlockchainView';
 
 // Modals
 import { ReceiptModal } from './components/ReceiptModal';
@@ -412,7 +413,7 @@ export const App: React.FC = () => {
   const handleResetDemoData = () => {
     storageService.resetToDemoData();
     reloadBusinessData(business.id);
-    alert('Store reset to initial demo state.');
+    alert('Store data purged successfully. Your store is now clean and ready.');
   };
 
   // Quick Restock jump from Dashboard
@@ -529,6 +530,7 @@ export const App: React.FC = () => {
               setIsReceiptModalOpen(true);
             }}
             onVoidSale={handleVoidSale}
+            onUpdateBusiness={handleUpdateBusiness}
           />
         )}
 
@@ -599,6 +601,17 @@ export const App: React.FC = () => {
               setActiveReceiptSale(sale);
               setIsReceiptModalOpen(true);
             }}
+          />
+        )}
+
+        {activeTab === 'blockchain' && (
+          <BlockchainView
+            business={business}
+            currentStaff={currentStaff}
+            onUpdateBusiness={handleUpdateBusiness}
+            invoices={invoices}
+            sales={sales}
+            onNavigateTab={setActiveTab}
           />
         )}
 

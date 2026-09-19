@@ -72,6 +72,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       (sale.taxAmount > 0 ? `VAT/Tax: +${formatMoney(sale.taxAmount, business, true)}\n` : '') +
       `💰 *TOTAL AMOUNT:* *${formatMoney(sale.totalAmount, business, true)}*\n` +
       `💳 Payment Mode: ${sale.paymentMethod.toUpperCase()}${sale.isCredit ? ' (CREDIT/DEBT)' : ''}\n` +
+      (sale.solanaSignature ? `◎ Solana Settlement: ${((sale.totalAmount ?? 0) / (business.solanaUsdcNgnRate || 1550)).toFixed(2)} USDC\n🔗 Explorer: https://explorer.solana.com/tx/${sale.solanaSignature}\n` : '') +
       `--------------------------------\n` +
       `📍 ${business.address}, ${business.city}, ${business.state}\n` +
       `📞 ${business.phone}\n` +
@@ -177,6 +178,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         <span>Payment:</span>
         <strong style="text-transform: uppercase;">${sale.paymentMethod} ${sale.isCredit ? '(DEBT)' : ''}</strong>
       </div>
+      ${sale.solanaSignature ? `
+      <div style="margin-top: 8px; padding: 6px 8px; background: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 4px; font-size: 10px; color: #065f46;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+          <span>◎ Settled on Solana Mainnet</span>
+          <span>${((sale.totalAmount ?? 0) / (business.solanaUsdcNgnRate || 1550)).toFixed(2)} USDC</span>
+        </div>
+        <div style="font-family: monospace; font-size: 8px; margin-top: 2px; word-break: break-all; color: #047857;">Tx: ${sale.solanaSignature}</div>
+      </div>` : ''}
     </div>
 
     <div class="footer">
@@ -308,6 +317,28 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 <div className="flex justify-between text-[10px] text-slate-400">
                   <span>Ref:</span>
                   <span>{sale.bankTransferReference}</span>
+                </div>
+              )}
+              {sale.solanaSignature && (
+                <div className="bg-emerald-50 text-emerald-900 p-2.5 rounded-xl border border-emerald-200 text-left my-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold">
+                    <span className="flex items-center gap-1 text-emerald-800">
+                      <span className="text-xs">◎</span>
+                      <span>Solana Mainnet Settlement</span>
+                    </span>
+                    <span className="font-mono text-emerald-700">
+                      {((sale.totalAmount ?? 0) / (business.solanaUsdcNgnRate || 1550)).toFixed(2)} USDC
+                    </span>
+                  </div>
+                  <a
+                    href={`https://explorer.solana.com/tx/${sale.solanaSignature}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-[9px] text-emerald-700 hover:text-emerald-900 underline truncate block mt-0.5"
+                    title="View transaction on Solana Explorer"
+                  >
+                    Tx: {sale.solanaSignature}
+                  </a>
                 </div>
               )}
             </div>
