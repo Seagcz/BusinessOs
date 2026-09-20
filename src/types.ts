@@ -481,3 +481,19 @@ export interface CartDraft {
   notes: string;
   updatedAt: string;
 }
+
+// Mandatory App Authentication Gate Types
+export type AuthProviderType = 'email' | 'google' | 'wallet';
+
+export interface AuthenticatedUser {
+  id: string; // Firebase UID, Solana address, or unique ID
+  email?: string;
+  name: string;
+  provider: AuthProviderType;
+  walletAddress?: string;
+  photoUrl?: string;
+  role: 'owner' | 'manager' | 'cashier';
+  businessId?: string;
+  token?: string;
+  createdAt: string;
+}

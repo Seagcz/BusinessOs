@@ -21,14 +21,27 @@
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500 selection:text-white overscroll-y-none">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
     <script>
+      // Clear legacy service worker caches to prevent mismatched React chunks
+      if ('caches' in window) {
+        caches.keys().then((names) => {
+          names.forEach((name) => {
+            if (name.includes('static') || name.includes('v1') || name.includes('sbos')) {
+              caches.delete(name);
+            }
+          });
+        }).catch(() => {});
+      }
       if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
+        // Unregister any active dev service workers to avoid stale modules
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const reg of registrations) {
+            reg.unregister().catch(() => {});
+          }
+        }).catch(() => {});
       }
     </script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
 

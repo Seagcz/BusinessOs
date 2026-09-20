@@ -14,9 +14,11 @@ import {
   NavigationTab,
   NetworkStatus,
   OfflineSyncSummary,
+  AuthenticatedUser,
 } from './types';
 import { storageService } from './services/storage';
 import { syncService } from './services/syncService';
+import { authService } from './services/authService';
 
 // Components
 import { Sidebar } from './components/Sidebar';
@@ -32,6 +34,7 @@ import { InvoicesView } from './components/InvoicesView';
 import { ReportsView } from './components/ReportsView';
 import { AdminView } from './components/AdminView';
 import { BlockchainView } from './components/BlockchainView';
+import { AuthGate } from './components/auth/AuthGate';
 
 // Modals
 import { ReceiptModal } from './components/ReceiptModal';
@@ -44,6 +47,11 @@ import { Smartphone, Download, X } from 'lucide-react';
 export const App: React.FC = () => {
   // Navigation State
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
+
+  // Mandatory Master Authentication State (Email, Google, Solana Wallet)
+  const [authenticatedUser, setAuthenticatedUser] = useState<AuthenticatedUser | null>(() =>
+    authService.getAuthenticatedUser()
+  );
 
   // Business and Staff
   const [business, setBusiness] = useState<BusinessProfile>(() => storageService.getActiveBusiness());
@@ -82,6 +90,10 @@ export const App: React.FC = () => {
   const [showPwaInstallBanner, setShowPwaInstallBanner] = useState<boolean>(false);
 
   useEffect(() => {
+    const unsubAuth = authService.subscribe((user) => {
+      setAuthenticatedUser(user);
+    });
+
     const unsubNet = syncService.subscribeNetwork((net) => {
       setNetworkStatus(net);
     });
@@ -101,11 +113,50 @@ export const App: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
 
     return () => {
+      unsubAuth();
       unsubNet();
       unsubSync();
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
     };
   }, []);
+
+  const handleUserAuthenticated = (user: AuthenticatedUser, storeName?: string) => {
+    setAuthenticatedUser(user);
+    if (storeName && storeName.trim()) {
+      const updatedBiz: BusinessProfile = {
+        ...business,
+        name: storeName.trim(),
+        isConfigured: true,
+      };
+      storageService.saveBusiness(updatedBiz);
+      setBusiness(updatedBiz);
+    }
+    if (user.walletAddress && !business.solanaWalletAddress) {
+      const updatedBiz: BusinessProfile = {
+        ...business,
+        solanaWalletAddress: user.walletAddress,
+        solanaUsdcEnabled: true,
+        isConfigured: true,
+      };
+      storageService.saveBusiness(updatedBiz);
+      setBusiness(updatedBiz);
+    }
+    // Update owner profile with logged in identity
+    const updatedStaff: StaffUser = {
+      ...currentStaff,
+      name: user.name,
+      email: user.email,
+      role: 'owner',
+      hasCreatedCredentials: true,
+    };
+    storageService.setCurrentStaff(updatedStaff);
+    setCurrentStaff(updatedStaff);
+  };
+
+  const handleSignOut = async () => {
+    await authService.signOut();
+    setAuthenticatedUser(null);
+  };
 
   const handleInstallPwa = async () => {
     if (!deferredPwaPrompt) return;
@@ -425,6 +476,11 @@ export const App: React.FC = () => {
   // Unread notifications count
   const unreadNotifCount = notifications.filter((n) => !n.read).length;
 
+  // MANDATORY AUTHENTICATION GATE: Must sign up or sign in with Email, Google, or Wallet
+  if (!authenticatedUser) {
+    return <AuthGate onAuthenticated={handleUserAuthenticated} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#F4F6F8] font-sans text-[#1C1C1C] flex flex-row antialiased selection:bg-emerald-500 selection:text-white overflow-x-hidden">
       {/* Bento Grid Left Sidebar for Desktop */}
@@ -437,6 +493,8 @@ export const App: React.FC = () => {
         onOpenBusinessModal={() => setActiveTab('admin')}
         unreadNotificationCount={unreadNotifCount}
         overdueDebtCount={debts.filter((d) => d.status === 'overdue' || (d.dueDate && d.dueDate < new Date().toISOString().split('T')[0] && d.balanceDue > 0)).length}
+        authenticatedUser={authenticatedUser}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Container */}
@@ -492,6 +550,8 @@ export const App: React.FC = () => {
           isOnline={networkStatus.isOnline}
           pendingSyncCount={syncSummary.pendingCount}
           isSyncing={isSyncing}
+          authenticatedUser={authenticatedUser}
+          onSignOut={handleSignOut}
         />
 
         {/* Main Content Area */}
@@ -644,6 +704,8 @@ export const App: React.FC = () => {
             onSendTestNotification={handleSendTestNotification}
             onClearAuditLogs={handleClearAuditLogs}
             onLogActivity={handleLogActivity}
+            authenticatedUser={authenticatedUser}
+            onSignOut={handleSignOut}
           />
         )}
       </main>
