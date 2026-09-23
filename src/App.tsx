@@ -15,6 +15,7 @@ import {
   NetworkStatus,
   OfflineSyncSummary,
   AuthenticatedUser,
+  SolanaTransaction,
 } from './types';
 import { storageService } from './services/storage';
 import { syncService } from './services/syncService';
@@ -34,6 +35,7 @@ import { InvoicesView } from './components/InvoicesView';
 import { ReportsView } from './components/ReportsView';
 import { AdminView } from './components/AdminView';
 import { BlockchainView } from './components/BlockchainView';
+import { PaymentsView } from './components/PaymentsView';
 import { AuthGate } from './components/auth/AuthGate';
 
 // Modals
@@ -68,6 +70,9 @@ export const App: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>(() => storageService.getCustomers(business.id));
   const [notifications, setNotifications] = useState<AppNotification[]>(() => storageService.getNotifications(business.id));
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => storageService.getAuditLogs(business.id));
+  const [solanaTransactions, setSolanaTransactions] = useState<SolanaTransaction[]>(() =>
+    storageService.getSolanaTransactions(business.id)
+  );
 
   // Modal States
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -183,7 +188,13 @@ export const App: React.FC = () => {
     setCustomers(storageService.getCustomers(bizId));
     setNotifications(storageService.getNotifications(bizId));
     setAuditLogs(storageService.getAuditLogs(bizId));
+    setSolanaTransactions(storageService.getSolanaTransactions(bizId));
   }, []);
+
+  const handleSaveSolanaTransaction = (tx: SolanaTransaction) => {
+    storageService.saveSolanaTransaction(tx, currentStaff.name);
+    setSolanaTransactions(storageService.getSolanaTransactions(business.id));
+  };
 
   // Business Switcher
   const handleSwitchBusiness = (bizId: string) => {
@@ -664,13 +675,30 @@ export const App: React.FC = () => {
           />
         )}
 
+        {activeTab === 'payments' && (
+          <PaymentsView
+            business={business}
+            currentStaff={currentStaff}
+            sales={sales}
+            invoices={invoices}
+            debts={debts}
+            solanaTransactions={solanaTransactions}
+            onSaveInvoice={handleSaveInvoice}
+            onSaveSale={handleCompleteSale}
+            onSaveTransaction={handleSaveSolanaTransaction}
+            onNavigateTab={setActiveTab}
+          />
+        )}
+
         {activeTab === 'blockchain' && (
           <BlockchainView
             business={business}
             currentStaff={currentStaff}
-            onUpdateBusiness={handleUpdateBusiness}
+            transactions={solanaTransactions}
             invoices={invoices}
             sales={sales}
+            onSaveTransaction={handleSaveSolanaTransaction}
+            onUpdateBusiness={handleUpdateBusiness}
             onNavigateTab={setActiveTab}
           />
         )}

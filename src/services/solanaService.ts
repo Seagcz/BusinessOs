@@ -3,15 +3,22 @@ import {
   PublicKey,
   LAMPORTS_PER_SOL,
   Transaction,
-  SystemProgram,
   Keypair,
+  TransactionInstruction,
 } from '@solana/web3.js';
+import {
+  getAssociatedTokenAddress,
+  createTransferInstruction,
+  createAssociatedTokenAccountInstruction,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 
 // Official Solana Mainnet-Beta USDC Token Mint (6 decimals)
 export const SOLANA_MAINNET_USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 // Public RPC endpoints with fallbacks for high availability
-const SOLANA_MAINNET_RPCS = [
+export const SOLANA_MAINNET_RPCS = [
   'https://api.mainnet-beta.solana.com',
   'https://solana-rpc.publicnode.com',
   'https://rpc.ankr.com/solana',
@@ -41,11 +48,45 @@ export interface VerificationResult {
   rawDetails?: any;
 }
 
+export interface OnChainTransactionSummary {
+  signature: string;
+  slot: number;
+  blockTime: number | null;
+  confirmationStatus: 'finalized' | 'confirmed' | 'processed';
+  err: any | null;
+  memo?: string;
+}
+
+export interface ClusterHealth {
+  connected: boolean;
+  cluster: 'mainnet-beta';
+  currentSlot: number;
+  latencyMs: number;
+  endpoint: string;
+}
+
+export type WalletConnectionErrorType =
+  | 'USER_REJECTED'
+  | 'NO_WALLET_FOUND'
+  | 'WALLET_LOCKED'
+  | 'NETWORK_ERROR'
+  | 'UNKNOWN';
+
+export interface WalletConnectionResult {
+  success: boolean;
+  address?: string;
+  walletName?: string;
+  provider?: any;
+  errorType?: WalletConnectionErrorType;
+  errorMessage?: string;
+}
+
 class SolanaService {
   private rpcIndex = 0;
   private connection: Connection;
   private cachedRate: number = DEFAULT_NGN_USDC_RATE;
   private lastRateFetch: number = 0;
+  private activeProvider: any = null;
 
   constructor() {
     this.connection = new Connection(SOLANA_MAINNET_RPCS[0], {
@@ -65,6 +106,10 @@ class SolanaService {
 
   getConnection(): Connection {
     return this.connection;
+  }
+
+  getCurrentRpcUrl(): string {
+    return SOLANA_MAINNET_RPCS[this.rpcIndex];
   }
 
   /**
@@ -104,6 +149,45 @@ class SolanaService {
       return `https://explorer.solana.com/address/${item}${clusterParam}`;
     }
     return `https://explorer.solana.com/tx/${item}${clusterParam}`;
+  }
+
+  /**
+   * Checks cluster connectivity, current slot, and latency
+   */
+  async getClusterHealth(): Promise<ClusterHealth> {
+    const start = performance.now();
+    try {
+      const slot = await this.connection.getSlot();
+      const latencyMs = Math.round(performance.now() - start);
+      return {
+        connected: true,
+        cluster: 'mainnet-beta',
+        currentSlot: slot,
+        latencyMs,
+        endpoint: this.getCurrentRpcUrl(),
+      };
+    } catch (err) {
+      this.rotateRpc();
+      try {
+        const slot = await this.connection.getSlot();
+        const latencyMs = Math.round(performance.now() - start);
+        return {
+          connected: true,
+          cluster: 'mainnet-beta',
+          currentSlot: slot,
+          latencyMs,
+          endpoint: this.getCurrentRpcUrl(),
+        };
+      } catch {
+        return {
+          connected: false,
+          cluster: 'mainnet-beta',
+          currentSlot: 0,
+          latencyMs: 9999,
+          endpoint: this.getCurrentRpcUrl(),
+        };
+      }
+    }
   }
 
   /**
@@ -156,6 +240,45 @@ class SolanaService {
     } catch (err) {
       console.warn('Error fetching USDC balance on mainnet:', err);
       return 0;
+    }
+  }
+
+  /**
+   * Fetches real on-chain transaction history for a Solana address directly from RPC.
+   */
+  async getSignaturesForAddress(
+    address: string,
+    limit: number = 20
+  ): Promise<OnChainTransactionSummary[]> {
+    if (!this.isValidAddress(address)) return [];
+    try {
+      const pubkey = new PublicKey(address.trim());
+      const sigInfos = await this.connection.getSignaturesForAddress(pubkey, { limit });
+      return sigInfos.map((item) => ({
+        signature: item.signature,
+        slot: item.slot,
+        blockTime: item.blockTime ?? null,
+        confirmationStatus: (item.confirmationStatus as any) || 'confirmed',
+        err: item.err,
+        memo: item.memo ?? undefined,
+      }));
+    } catch (err) {
+      console.warn('getSignaturesForAddress RPC error, attempting fallback:', err);
+      this.rotateRpc();
+      try {
+        const pubkey = new PublicKey(address.trim());
+        const sigInfos = await this.connection.getSignaturesForAddress(pubkey, { limit });
+        return sigInfos.map((item) => ({
+          signature: item.signature,
+          slot: item.slot,
+          blockTime: item.blockTime ?? null,
+          confirmationStatus: (item.confirmationStatus as any) || 'confirmed',
+          err: item.err,
+          memo: item.memo ?? undefined,
+        }));
+      } catch {
+        return [];
+      }
     }
   }
 
@@ -351,10 +474,17 @@ class SolanaService {
   }
 
   /**
-   * Detects and connects to a browser Solana wallet provider (Phantom, Solflare, Backpack)
+   * Detects and connects to a browser Solana wallet provider (Phantom, Solflare, Backpack, Coinbase, window.solana)
+   * Handles errors properly (user cancellation, wallet locked, no wallet installed).
    */
-  async connectBrowserWallet(): Promise<{ address: string; walletName: string } | null> {
-    if (typeof window === 'undefined') return null;
+  async connectBrowserWallet(): Promise<WalletConnectionResult> {
+    if (typeof window === 'undefined') {
+      return {
+        success: false,
+        errorType: 'NO_WALLET_FOUND',
+        errorMessage: 'Window environment not available.',
+      };
+    }
 
     const win = window as any;
     let provider = null;
@@ -369,30 +499,204 @@ class SolanaService {
     } else if (win.backpack) {
       provider = win.backpack;
       walletName = 'Backpack';
+    } else if (win.coinbaseSolana) {
+      provider = win.coinbaseSolana;
+      walletName = 'Coinbase Wallet';
     } else if (win.solana) {
       provider = win.solana;
       walletName = provider.isPhantom ? 'Phantom' : 'Solana Wallet';
     }
 
     if (!provider) {
-      return null;
+      return {
+        success: false,
+        errorType: 'NO_WALLET_FOUND',
+        errorMessage:
+          'No Solana wallet browser extension (Phantom, Solflare, Backpack) was detected. Please install an extension or enter your address manually.',
+      };
     }
 
     try {
       const resp = await provider.connect();
-      const pubkey = resp.publicKey?.toString() || provider.publicKey?.toString();
+      const pubkey = resp?.publicKey?.toString() || provider.publicKey?.toString();
       if (pubkey && this.isValidAddress(pubkey)) {
+        this.activeProvider = provider;
         return {
+          success: true,
           address: pubkey,
           walletName,
+          provider,
+        };
+      } else {
+        return {
+          success: false,
+          errorType: 'UNKNOWN',
+          errorMessage: 'Wallet connected but public key could not be verified.',
         };
       }
     } catch (err: any) {
-      console.warn('Wallet connection cancelled or rejected by user:', err);
-      throw err;
+      const errMsg = (err?.message || '').toLowerCase();
+      const errCode = err?.code;
+
+      if (errCode === 4001 || errMsg.includes('user rejected') || errMsg.includes('cancelled')) {
+        return {
+          success: false,
+          errorType: 'USER_REJECTED',
+          errorMessage: 'Connection request was cancelled by user.',
+        };
+      }
+
+      if (errMsg.includes('locked')) {
+        return {
+          success: false,
+          errorType: 'WALLET_LOCKED',
+          errorMessage: 'Wallet is locked. Please unlock your Solana extension and try again.',
+        };
+      }
+
+      return {
+        success: false,
+        errorType: 'UNKNOWN',
+        errorMessage: err?.message || 'Failed to connect to Solana wallet extension.',
+      };
+    }
+  }
+
+  /**
+   * Disconnects the active browser wallet
+   */
+  async disconnectBrowserWallet(): Promise<void> {
+    if (this.activeProvider && typeof this.activeProvider.disconnect === 'function') {
+      try {
+        await this.activeProvider.disconnect();
+      } catch (err) {
+        console.warn('Wallet disconnect error:', err);
+      }
+    }
+    this.activeProvider = null;
+  }
+
+  /**
+   * Returns current active provider
+   */
+  getActiveProvider(): any {
+    if (this.activeProvider) return this.activeProvider;
+    if (typeof window === 'undefined') return null;
+    const win = window as any;
+    return win.phantom?.solana || win.solflare || win.backpack || win.solana || null;
+  }
+
+  /**
+   * Executes a real on-chain SPL USDC transfer using the connected browser wallet.
+   * Never simulated! Sends actual SPL token instruction, prompts wallet confirmation, and awaits on-chain confirmation.
+   */
+  async sendUsdcPayment(params: {
+    recipientAddress: string;
+    amountUsdc: number;
+    memoText?: string;
+  }): Promise<{ signature: string; slot?: number; blockTime?: number }> {
+    const { recipientAddress, amountUsdc, memoText } = params;
+
+    const provider = this.getActiveProvider();
+    if (!provider || !provider.publicKey) {
+      throw new Error('No Solana wallet is currently connected. Please connect your wallet first.');
     }
 
-    return null;
+    if (!this.isValidAddress(recipientAddress)) {
+      throw new Error('Invalid recipient Solana address.');
+    }
+
+    if (amountUsdc <= 0) {
+      throw new Error('Payment amount must be greater than zero.');
+    }
+
+    const payerPubkey: PublicKey = provider.publicKey;
+    const recipientPubkey = new PublicKey(recipientAddress.trim());
+    const usdcMintPubkey = new PublicKey(SOLANA_MAINNET_USDC_MINT);
+
+    // 1. Get Associated Token Addresses for sender and recipient
+    const fromAta = await getAssociatedTokenAddress(usdcMintPubkey, payerPubkey);
+    const toAta = await getAssociatedTokenAddress(usdcMintPubkey, recipientPubkey);
+
+    const transaction = new Transaction();
+
+    // 2. Check if recipient ATA exists; if not, add instruction to create it
+    try {
+      const toAtaInfo = await this.connection.getAccountInfo(toAta);
+      if (!toAtaInfo) {
+        transaction.add(
+          createAssociatedTokenAccountInstruction(
+            payerPubkey, // payer
+            toAta, // associatedToken
+            recipientPubkey, // owner
+            usdcMintPubkey // mint
+          )
+        );
+      }
+    } catch (ataErr) {
+      console.warn('Error checking recipient ATA, proceeding with standard transfer:', ataErr);
+    }
+
+    // 3. Add SPL Token transfer instruction (6 decimals for USDC)
+    const rawAmount = BigInt(Math.round(amountUsdc * 1_000_000));
+    transaction.add(
+      createTransferInstruction(
+        fromAta,
+        toAta,
+        payerPubkey,
+        rawAmount,
+        [],
+        TOKEN_PROGRAM_ID
+      )
+    );
+
+    // 4. Add memo instruction if provided
+    if (memoText && memoText.trim()) {
+      const memoProgramId = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+      transaction.add(
+        new TransactionInstruction({
+          keys: [{ pubkey: payerPubkey, isSigner: true, isWritable: false }],
+          programId: memoProgramId,
+          data: Buffer.from(memoText.trim(), 'utf-8'),
+        })
+      );
+    }
+
+    // 5. Get recent blockhash
+    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = payerPubkey;
+
+    // 6. Sign and send via wallet provider
+    let signature = '';
+    if (typeof provider.signAndSendTransaction === 'function') {
+      const sendRes = await provider.signAndSendTransaction(transaction);
+      signature = sendRes.signature || sendRes;
+    } else if (typeof provider.sendTransaction === 'function') {
+      signature = await provider.sendTransaction(transaction, this.connection);
+    } else {
+      throw new Error('Connected wallet does not support automated transaction signing.');
+    }
+
+    // 7. Confirm on-chain with Solana Mainnet
+    const confirmation = await this.connection.confirmTransaction(
+      {
+        signature,
+        blockhash,
+        lastValidBlockHeight,
+      },
+      'confirmed'
+    );
+
+    if (confirmation.value.err) {
+      throw new Error(`Transaction failed on-chain: ${JSON.stringify(confirmation.value.err)}`);
+    }
+
+    return {
+      signature,
+      slot: confirmation.context.slot,
+      blockTime: Math.floor(Date.now() / 1000),
+    };
   }
 
   /**
@@ -422,7 +726,13 @@ class SolanaService {
   hasBrowserWallet(): boolean {
     if (typeof window === 'undefined') return false;
     const win = window as any;
-    return !!(win.phantom?.solana || win.solflare || win.backpack || win.solana);
+    return !!(
+      win.phantom?.solana ||
+      win.solflare ||
+      win.backpack ||
+      win.coinbaseSolana ||
+      win.solana
+    );
   }
 }
 

@@ -62,6 +62,7 @@ export type NavigationTab =
   | 'debts'
   | 'expenses'
   | 'invoices'
+  | 'payments'
   | 'reports'
   | 'blockchain'
   | 'admin';
@@ -391,6 +392,9 @@ export interface SolanaTransaction {
   notes?: string;
   errorMessage?: string;
   verifiedAt?: string;
+  reconciled?: boolean;
+  reconciledAt?: string;
+  reconciledBy?: string;
 }
 
 export interface AuditLog {

@@ -3,6 +3,7 @@
   "appId": "1:869312177306:web:0a1f13d55d1a9c9708ab23",
   "apiKey": "AIzaSyBrV4S4ElOIpIJDsxdikM44W91Vet0p0vI",
   "authDomain": "tidal-experience-vmbw7.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-smallbusinessos-73a9cf09-9714-4835-9969-970e1350254e",
   "storageBucket": "tidal-experience-vmbw7.firebasestorage.app",
   "messagingSenderId": "869312177306",
   "measurementId": "",

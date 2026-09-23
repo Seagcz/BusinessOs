@@ -12,6 +12,7 @@ import {
   X,
   ChevronRight,
   Sparkles,
+  CreditCard,
 } from 'lucide-react';
 import { NavigationTab, StaffUser } from '../types';
 
@@ -41,7 +42,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   const moreTabs: { id: NavigationTab; label: string; description: string; icon: React.FC<{ className?: string }>; badge?: number | string | null; badgeColor?: string }[] = [
     { id: 'invoices', label: 'Invoices & Quotes', description: 'Create, share & track client invoices', icon: FileText },
-    { id: 'blockchain', label: 'Solana & USDC', description: 'On-chain USDC payments, records & explorer', icon: ShieldCheck, badge: 'Mainnet', badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold' },
+    { id: 'payments', label: 'Payments & Reconcile', description: 'Bank, cash, POS & Solana payments with auto-reconcile', icon: CreditCard, badge: 'Unified', badgeColor: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' },
+    { id: 'blockchain', label: 'Solana Wallet', description: 'On-chain USDC payments, records & explorer', icon: ShieldCheck, badge: 'Mainnet', badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold' },
     { id: 'expenses', label: 'Operating Expenses', description: 'Fuel, electricity, logistics & salaries', icon: Receipt },
     { id: 'reports', label: 'Reports & P&L', description: 'Daily summary, profit analytics & Z-reports', icon: BarChart3 },
     { id: 'admin', label: 'Admin & Settings', description: 'Staff, roles, backup & store profile', icon: ShieldCheck, badge: 'Pro', badgeColor: 'bg-amber-400 text-slate-950 font-black' },
